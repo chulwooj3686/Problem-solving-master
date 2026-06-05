@@ -2315,29 +2315,87 @@ function runWhy3AI(idx) {
   }, 900 + Math.random()*600);
 }
 
+// ── 핵심원인별 맞춤 5Why 체인 생성 ──
+function generateWhyChainForCause(cause) {
+  var gap     = (document.getElementById('s1gap') ? document.getElementById('s1gap').value : stepOutputs[1] || '').trim();
+  var persona = (document.getElementById('s1persona') ? document.getElementById('s1persona').value : '').trim() || '담당팀';
+  var gShort  = gap.length > 15 ? gap.slice(0,15) + '…' : gap || '현재 문제';
+  var cShort  = cause.length > 18 ? cause.slice(0,18) + '…' : cause;
+
+  // MECE에서 이 원인이 속한 대분류 찾기
+  var catName = '';
+  meceData.cats.forEach(function(cat) {
+    if ((meceData.leaves[cat] || []).indexOf(cause) >= 0) catName = cat;
+  });
+
+  // 키워드로 원인 유형 분류
+  var ct = cause;
+  var isProcess  = /프로세스|기준|절차|체계|매뉴얼|표준|규정|가이드/.test(ct);
+  var isPeople   = /역량|능력|교육|훈련|스킬|지식|경험|숙련/.test(ct);
+  var isCulture  = /문화|관행|습관|인식|태도|의지|동기|분위기/.test(ct);
+  var isResource = /예산|인력|시간|자원|지원|인원|비용|부족/.test(ct);
+  var isComm     = /소통|커뮤니케이션|공유|협업|협력|보고|피드백|전달/.test(ct);
+  var isSystem   = /시스템|툴|도구|플랫폼|인프라|자동화|데이터/.test(ct);
+
+  var why1, why2, why3, root;
+
+  if (isProcess) {
+    why1 = '"' + cShort + '"이(가) 발생한 것은 이 영역의 업무 기준과 책임 소재가 처음부터 명문화되지 않았기 때문이다';
+    why2 = '기준이 명문화되지 않은 것은 ' + persona + '가 이 업무를 담당 범위로 인식하지 않았거나 인수인계가 구두로만 이뤄졌기 때문이다';
+    why3 = '책임 범위가 불명확한 것은 역할 설계 시 " ' + cShort + '" 영역이 누락되었고, 이를 점검하는 구조가 없었기 때문이다';
+    root = gShort + ' 문제를 예방할 프로세스를 설계·유지할 오너십이 조직 내에 없었으며, 경영진도 구조적 문제로 인식하지 않고 방치해왔다';
+  } else if (isPeople) {
+    why1 = '"' + cShort + '"이(가) 발생한 것은 ' + persona + '가 이 역할에 필요한 역량을 충분히 갖추지 못했기 때문이다';
+    why2 = '역량이 부족한 것은 체계적인 교육·육성 프로그램이 없고, 입사 후 OJT도 형식적으로만 운영됐기 때문이다';
+    why3 = '교육 체계가 없는 것은 조직이 즉각적인 성과 창출을 우선시하고 사람 육성에 장기 투자하는 문화가 없기 때문이다';
+    root = '역량 개발에 대한 경영진의 장기적 관점이 부재하고, 단기 KPI 달성이 항상 우선되는 조직 구조가 이 문제를 반복시킨다';
+  } else if (isCulture) {
+    why1 = '"' + cShort + '"이(가) 지속된 것은 이 문제가 심각하다는 공감대가 조직 내에 형성되지 않았기 때문이다';
+    why2 = '공감대가 없는 것은 문제를 수치로 가시화하거나 리더가 공식 이슈로 제기한 적이 없기 때문이다';
+    why3 = '리더가 이슈화하지 않은 것은 ' + cShort + ' 문제가 단기 성과 지표에 직접 영향을 주지 않는다고 인식됐기 때문이다';
+    root = '평가·보상 체계가 단기 실적 중심이어서 문화·구조적 문제는 항상 후순위로 밀리는 패턴이 반복된다';
+  } else if (isResource) {
+    why1 = '"' + cShort + '"이(가) 발생한 것은 이 영역에 필요한 자원(인력·예산·시간)이 충분히 배분되지 않았기 때문이다';
+    why2 = '자원이 배분되지 않은 것은 경영진이 이 문제의 비용 대비 효과를 충분히 인식하지 못했기 때문이다';
+    why3 = '효과 인식이 부재한 것은 ' + gShort + ' 문제가 조직 성과에 미치는 영향이 측정·보고된 적이 없기 때문이다';
+    root = '성과 측정 체계의 부재로 중요한 문제에 선제적으로 자원을 배분하는 의사결정 구조가 작동하지 않는다';
+  } else if (isComm) {
+    why1 = '"' + cShort + '"이(가) 발생한 것은 관련 당사자 간 정보와 목표를 공유하는 구조가 없기 때문이다';
+    why2 = '공유 구조가 없는 것은 협업 방식과 의사소통 채널이 명확히 정의되지 않았기 때문이다';
+    why3 = '협업 방식이 정의되지 않은 것은 부서 간 경계가 강하고 공동 목표보다 개별 성과가 우선시되기 때문이다';
+    root = '조직 구조 자체가 협업보다 독립 운영에 최적화되어 있어, 부서 간 시너지를 만들 인센티브와 공식 채널이 없다';
+  } else if (isSystem) {
+    why1 = '"' + cShort + '"이(가) 발생한 것은 이 업무를 지원할 시스템·도구가 없거나 현장 요구에 맞지 않기 때문이다';
+    why2 = '시스템이 부적합한 것은 현장 담당자의 요구사항이 시스템 설계·개선에 반영되지 않았기 때문이다';
+    why3 = '요구사항이 반영되지 않은 것은 IT·현업 간 소통 구조가 없고, 우선순위 결정 권한이 현장에 없기 때문이다';
+    root = '시스템 개선의 의사결정이 현장 고통보다 비용·일정 중심으로 이뤄져, 실제 문제를 해결하는 도구가 도입되지 않는다';
+  } else {
+    // 카테고리 분류로 대분류명 활용
+    var catHint = catName ? '(' + catName + ' 영역)' : '';
+    why1 = '"' + cShort + '" ' + catHint + ' 상황이 발생한 것은 이를 예방·관리할 공식 기준이나 담당자가 지정되지 않았기 때문이다';
+    why2 = '관리 기준이 없는 것은 ' + persona + '가 이 영역을 핵심 우선순위로 인식하지 않았고, 성과 지표에도 포함되지 않았기 때문이다';
+    why3 = '우선순위로 다루지 않은 것은 ' + gShort + ' 문제와 이 원인 간의 인과관계가 데이터로 증명된 적이 없기 때문이다';
+    root = '조직이 이 문제를 구조적 이슈로 다루지 않고 개인의 역량·의지 문제로만 귀인해온 것이 이 문제를 반복시키는 근본 원인이다';
+  }
+
+  return [cause, why1, why2, why3, root];
+}
+
 function renderWhy3Chain(idx) {
-  var focusEl  = document.getElementById('s3focus-' + idx);
-  var focusVal = focusEl ? focusEl.value.trim() : '';
+  var focusEl   = document.getElementById('s3focus-' + idx);
+  var focusVal  = focusEl ? focusEl.value.trim() : (selectedKeyCauses[idx] || '');
   var container = document.getElementById('whyChain-' + idx);
   if (!container) return;
 
   var chain;
-  if (why3ChainData[idx] && why3ChainData[idx].length === 5) {
+  if (why3ChainData[idx] && why3ChainData[idx].length === 5 && why3ChainData[idx][1] &&
+      !why3ChainData[idx][1].startsWith('직접 입력')) {
+    // 이미 사용자가 편집하거나 AI가 생성한 체인이 있으면 재사용
     chain = why3ChainData[idx].slice();
+    if (focusVal) chain[0] = focusVal;
   } else {
-    var data = (sc && sc.id !== 'CUSTOM' && sc.ai) ? sc.ai : generateCustomAI();
-    if (data && data.why && data.why.length >= 5) {
-      chain = data.why.slice(0,5);
-      if (focusVal) chain[0] = focusVal;
-    } else {
-      chain = [
-        focusVal || '분석할 현상을 입력하세요',
-        '직접 입력: 왜 그런 현상이 발생했는가?',
-        '직접 입력: 왜 그 원인이 생겼는가?',
-        '직접 입력: 왜 그 상황이 지속되었는가?',
-        '직접 입력: 근본적으로 왜 이 문제가 해결되지 않았는가?'
-      ];
-    }
+    // 핵심원인별 맞춤 체인 생성
+    chain = generateWhyChainForCause(focusVal);
   }
   why3ChainData[idx] = chain.slice();
 
