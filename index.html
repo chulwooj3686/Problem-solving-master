@@ -375,6 +375,32 @@ select option{background:var(--bg2);}
 .lobby-tab-btn { flex: 1; padding: 9px; background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s; }
 .lobby-tab-btn.active { background: var(--blue); color: #fff; }
 
+/* ─── 세션 / 관리자 로그인 화면 ─── */
+#screen-session, #screen-admin-login {
+  position: fixed; inset: 0; z-index: 1100;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+.session-code-input {
+  font-size: 28px !important; font-weight: 700;
+  letter-spacing: .35em !important; text-transform: uppercase;
+}
+/* ─── 관리자 세션 카드 ─── */
+.admin-tab { display:flex; gap:0; margin-bottom:24px; border:1px solid var(--border); border-radius:10px; overflow:hidden; max-width:380px; }
+.admin-tab-btn { flex:1; padding:10px; background:transparent; border:none; color:var(--muted); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; transition:all .18s; }
+.admin-tab-btn.active { background:var(--blue); color:#fff; }
+.create-session-form { background:var(--bg2); border:1px solid rgba(59,130,246,.25); border-radius:16px; padding:20px; margin-bottom:24px; }
+.session-card { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:20px; transition:all .2s; }
+.session-card.inactive { opacity:.55; }
+.session-code-badge { font-size:24px; font-weight:700; letter-spacing:.2em; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px; }
+.session-company { font-size:14px; font-weight:700; margin-bottom:10px; color:var(--text); }
+.session-status { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
+.session-status.on  { background:rgba(16,185,129,.15); color:var(--green); border:1px solid rgba(16,185,129,.3); }
+.session-status.off { background:rgba(239,68,68,.12); color:var(--red); border:1px solid rgba(239,68,68,.3); }
+.session-filter-bar { display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+.session-select { background:var(--bg2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 12px; font-family:inherit; font-size:13px; min-width:240px; outline:none; }
+.session-select:focus { border-color:var(--blue); }
+
 /* ─── 관리자 대시보드 ─── */
 #screen-admin {
   display: none;
@@ -832,36 +858,50 @@ const ALLOWED_CODES   = ["1조","2조","3조","4조","5조","6조","7조","8조"
 const DEMO_MODE       = false;  // Firebase 연결됨
 </script>
 
-<!-- ═══ 로비 화면 ═══ -->
-<div id="screen-lobby">
+<!-- ═══ 세션 코드 입력 화면 (첫 화면) ═══ -->
+<div id="screen-session">
+  <div class="lobby-card">
+    <div class="lobby-logo">PROBLEM-SOLVING MASTER</div>
+    <div class="lobby-title">🔐 세션 코드 입력</div>
+    <div class="lobby-sub">강사로부터 받은 <strong>4자리 세션 코드</strong>를 입력하세요.<br>코드가 없으면 강사에게 문의하세요.</div>
+    <input class="lobby-input session-code-input" id="sessionCodeInput" type="text" maxlength="4"
+      placeholder="XXXX"
+      oninput="this.value=this.value.toUpperCase()"
+      onkeydown="if(event.key==='Enter') enterSession()">
+    <button class="lobby-btn" onclick="enterSession()">입장하기</button>
+    <div class="lobby-err" id="sessionErr"></div>
+    <button class="lobby-btn-sec" style="margin-top:8px;" onclick="showAdminFromSession()">🔑 관리자 로그인</button>
+    <div style="margin-top:16px;font-size:11px;color:var(--muted);">© 2026 GAM Consulting</div>
+  </div>
+</div>
+
+<!-- ═══ 로비 화면 (세션 통과 후) ═══ -->
+<div id="screen-lobby" style="display:none;">
   <div class="lobby-card">
     <div class="lobby-logo">PROBLEM-SOLVING MASTER</div>
     <div class="lobby-title">문제해결 프로세스 실습</div>
-    <div class="lobby-sub">조 코드를 입력하면 워크스페이스가 열립니다.<br>관리자는 아래 탭에서 로그인하세요.</div>
-
-    <div class="lobby-tab">
-      <button class="lobby-tab-btn active" id="tabStudent" onclick="switchTab('student')">🎓 교육생</button>
-      <button class="lobby-tab-btn"        id="tabAdmin"   onclick="switchTab('admin')"  >🔑 관리자</button>
-    </div>
-
-    <!-- 교육생 탭 -->
-    <div id="panelStudent">
-      <input class="lobby-input" id="groupCodeInput" type="text" maxlength="10"
-        placeholder="조 코드 입력 (예: 1조)"
-        onkeydown="if(event.key==='Enter') enterGroup()">
-      <button class="lobby-btn" onclick="enterGroup()">입장하기</button>
-    </div>
-
-    <!-- 관리자 탭 -->
-    <div id="panelAdmin" style="display:none;">
-      <input class="lobby-input" id="adminPwInput" type="password"
-        placeholder="관리자 비밀번호"
-        onkeydown="if(event.key==='Enter') enterAdmin()">
-      <button class="lobby-btn" onclick="enterAdmin()">관리자 로그인</button>
-    </div>
-
+    <div class="lobby-sub" id="lobbySub">조 코드를 입력하면 워크스페이스가 열립니다.</div>
+    <input class="lobby-input" id="groupCodeInput" type="text" maxlength="10"
+      placeholder="조 코드 입력 (예: 1조)"
+      onkeydown="if(event.key==='Enter') enterGroup()">
+    <button class="lobby-btn" onclick="enterGroup()">입장하기</button>
     <div class="lobby-err" id="lobbyErr"></div>
     <div style="margin-top:16px;font-size:11px;color:var(--muted);">© 2026 GAM Consulting · 본 앱 데이터는 외부로 전송되지 않습니다.</div>
+  </div>
+</div>
+
+<!-- ═══ 관리자 로그인 화면 ═══ -->
+<div id="screen-admin-login" style="display:none;">
+  <div class="lobby-card">
+    <div class="lobby-logo">PROBLEM-SOLVING MASTER</div>
+    <div class="lobby-title">🔑 관리자 로그인</div>
+    <div class="lobby-sub">관리자 비밀번호를 입력하세요.</div>
+    <input class="lobby-input" id="adminPwInput" type="password"
+      placeholder="관리자 비밀번호"
+      onkeydown="if(event.key==='Enter') enterAdmin()">
+    <button class="lobby-btn" onclick="enterAdmin()">로그인</button>
+    <div class="lobby-err" id="adminLoginErr"></div>
+    <button class="lobby-btn-sec" style="margin-top:8px;" onclick="backToSession()">← 돌아가기</button>
   </div>
 </div>
 
@@ -877,8 +917,48 @@ const DEMO_MODE       = false;  // Firebase 연결됨
     </div>
   </div>
   <div class="admin-main">
-    <div class="admin-section-title">조별 진행 현황</div>
-    <div class="group-grid" id="groupGrid"></div>
+    <!-- 탭 -->
+    <div class="admin-tab">
+      <button class="admin-tab-btn active" id="adminTab1" onclick="switchAdminTab('groups')">📊 조별 현황</button>
+      <button class="admin-tab-btn"        id="adminTab2" onclick="switchAdminTab('sessions')">🔐 세션 관리</button>
+    </div>
+
+    <!-- 조별 현황 패널 -->
+    <div id="adminPanelGroups">
+      <div class="session-filter-bar">
+        <div class="admin-section-title" style="margin-bottom:0;">조별 진행 현황</div>
+        <select class="session-select" id="sessionFilter" onchange="loadAllGroups()">
+          <option value="">— 세션 선택 —</option>
+        </select>
+      </div>
+      <div class="group-grid" id="groupGrid"></div>
+    </div>
+
+    <!-- 세션 관리 패널 -->
+    <div id="adminPanelSessions" style="display:none;">
+      <div class="admin-section-title">세션 관리</div>
+
+      <!-- 세션 생성 폼 -->
+      <div class="create-session-form">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--blue);">+ 새 세션 생성</div>
+        <div style="display:grid;grid-template-columns:1fr 140px auto;gap:10px;align-items:end;">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px;">회사 / 교육명</label>
+            <input type="text" id="newSessionCompany" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;padding:9px 12px;outline:none;" placeholder="예: 메타크래프트, 현대자동차 HRD">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px;">4자리 코드 (비워두면 자동)</label>
+            <input type="text" id="newSessionCode" maxlength="4" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:16px;font-weight:700;letter-spacing:.2em;padding:9px 12px;outline:none;text-align:center;" placeholder="AUTO">
+          </div>
+          <button class="btn btn-pri" style="padding:9px 20px;" onclick="createSession()">생성</button>
+        </div>
+      </div>
+
+      <!-- 세션 목록 -->
+      <div class="group-grid" id="sessionGrid">
+        <div style="color:var(--muted);font-size:13px;">세션이 없습니다.</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1740,6 +1820,70 @@ function generateIdeasFromRootCause(rootCause) {
   ];
 }
 
+// ── Step 7: 프로세스 기반 제약 조건 생성 ─────────────────
+function generateConstraintsFromProcess() {
+  // 앞 단계에서 수집된 실제 데이터 읽기
+  var gap      = (document.getElementById('s1gap')?.value      || stepOutputs[1] || '').trim();
+  var asis     = (document.getElementById('s1asis')?.value     || '').trim();
+  var tobe     = (document.getElementById('s1tobe')?.value     || '').trim();
+  var persona  = (document.getElementById('s1persona')?.value  || '').trim() || '담당팀장';
+  var collab   = (document.getElementById('s1collab')?.value   || '').trim() || '유관 부서';
+  var priority = (document.getElementById('s1priority')?.value || '').trim();
+  var impact   = (document.getElementById('s1impact')?.value   || '').trim();
+  var rootCause= stepOutputs[3] || (document.getElementById('s3focus')?.value || '').trim();
+  var solution = stepOutputs[4] || (document.getElementById('s4sol1')?.value  || '').trim();
+  var concern  = (document.getElementById('s7concern')?.value  || '').trim();
+
+  // 키워드 요약 (너무 길면 축약)
+  var solShort  = solution  ? (solution.length  > 25 ? solution.slice(0,25)+'…'  : solution)  : '해결방안';
+  var rootShort = rootCause ? (rootCause.length > 20 ? rootCause.slice(0,20)+'…' : rootCause) : '근본 원인';
+  var gapShort  = gap       ? (gap.length       > 20 ? gap.slice(0,20)+'…'       : gap)       : '현재 문제';
+  var tobeShort = tobe      ? (tobe.length      > 20 ? tobe.slice(0,20)+'…'      : tobe)      : '문제 해결된 모습';
+
+  var cts = [];
+
+  // ① 예산 — 해결방안·우려사항 반영
+  var budgetBody = '';
+  if (concern && /예산|비용|돈|원|만원|억/.test(concern)) {
+    budgetBody = concern + ' 이 조건 하에서 ' + solShort + '을(를) 실행하려면 기존 예산 재배분 또는 단계적 파일럿으로 초기 투자 규모를 최소화하는 전략이 필요합니다.';
+  } else {
+    budgetBody = '"' + solShort + '" 실행을 위한 초기 예산 확보가 필요합니다. '
+      + (impact ? '기대 효과(' + impact + ')를 근거로 경영진 설득 자료를 준비하고, ' : '')
+      + '소규모 파일럿 → 효과 검증 → 전사 확대 순서로 투자 리스크를 분산하는 것을 권장합니다.';
+  }
+  cts.push({ icon: '💰', type: '예산', body: budgetBody });
+
+  // ② 기간 — priority 입력값 직접 반영
+  var timeBody = '';
+  if (priority) {
+    timeBody = '우선순위 판단: "' + priority + '" '
+      + '이 일정 안에 "' + tobeShort + '"에 도달하려면, 단기(즉시 착수) → 중기(파일럿 실행) → 장기(전사 확대)로 단계를 나누어 각 마일스톤을 설정해야 합니다.';
+  } else {
+    timeBody = '"' + solShort + '" 실행의 기간 제약을 명확히 해야 합니다. '
+      + '"' + gapShort + '" 문제가 지속될수록 손실이 커지므로, 최소한의 단기 액션(2주 이내)을 먼저 착수하는 것이 중요합니다.';
+  }
+  cts.push({ icon: '⏰', type: '기간', body: timeBody });
+
+  // ③ 규정·승인 — 협업 부서·해결방안 반영
+  var ruleBody = '"' + solShort + '"을(를) 실행하기 위해 '
+    + collab + '의 협조 및 경영진 승인이 필요합니다. '
+    + '관련 내부 규정·결재 라인을 사전에 확인하고, 의사결정권자가 "' + rootShort + '" 문제를 인식하고 있는지 여부를 파악한 후 착수 기준을 정하세요.';
+  cts.push({ icon: '📜', type: '규정·승인', body: ruleBody });
+
+  // ④ 기술·역량 — 근본원인·해결방안 반영
+  var skillBody = '"' + rootShort + '"을(를) 해소하기 위해 "'  + solShort + '"을(를) 실행할 때, '
+    + persona + '과(와) 팀 내 실행 역량이 충분한지 점검이 필요합니다. '
+    + '역량 갭이 확인되면 외부 전문가 활용 또는 내부 교육을 병행하고, 초기에는 가장 역량이 높은 구성원을 파일럿 리더로 배치하는 방식을 권장합니다.';
+  cts.push({ icon: '🔧', type: '기술·역량', body: skillBody });
+
+  // ⑤ 사용자가 우려 입력한 경우 추가 항목
+  if (concern && !/예산|비용|돈|원|만원|억/.test(concern)) {
+    cts.push({ icon: '⚠️', type: '추가 우려 사항', body: '입력하신 우려: "' + concern + '" — 이 제약이 "' + solShort + '" 실행에 미치는 영향 범위를 먼저 파악하고, 우회 전략 또는 대안을 사전에 준비하세요.' });
+  }
+
+  return cts;
+}
+
 // ── CUSTOM 동적 AI 데이터 생성 ──────────────────────────
 function generateCustomAI() {
   var gap      = (document.getElementById('s1gap')?.value || '').trim();
@@ -1869,7 +2013,7 @@ function renderAIOutput(step) {
       <div class="score-grid">
         <div class="score-card">
           <div class="score-val ${scoreClass(c1ok)}">${['0','△','✓'][c1ok]}</div>
-          <div class="score-label">① 수치화</div>
+          <div class="score-label">① 객관화</div>
           <div style="margin-top:5px;">${scoreLabel(c1ok)}</div>
         </div>
         <div class="score-card">
@@ -1887,7 +2031,7 @@ function renderAIOutput(step) {
         문제 정의 완성도 <strong style="font-size:20px;color:${total>=80?'var(--green)':total>=50?'var(--yellow)':'var(--red)'};">${total}%</strong>
       </div>
       <div>
-        <div class="ai-check-item"><span class="check-icon">${c1ok===2?'✅':c1ok===1?'⚠️':'❌'}</span><div><strong>수치화 판단</strong><br><span style="color:var(--muted);font-size:12px;">${c1msg}</span></div></div>
+        <div class="ai-check-item"><span class="check-icon">${c1ok===2?'✅':c1ok===1?'⚠️':'❌'}</span><div><strong>객관화 판단</strong><br><span style="color:var(--muted);font-size:12px;">${c1msg}</span></div></div>
         <div class="ai-check-item"><span class="check-icon">${c2ok===2?'✅':c2ok===1?'⚠️':'❌'}</span><div><strong>페르소나 판단</strong><br><span style="color:var(--muted);font-size:12px;">${c2msg}</span></div></div>
         <div class="ai-check-item"><span class="check-icon">${c3ok===2?'✅':c3ok===1?'⚠️':'❌'}</span><div><strong>중요도 판단</strong><br><span style="color:var(--muted);font-size:12px;">${c3msg}</span></div></div>
       </div>
@@ -2057,7 +2201,7 @@ function renderAIOutput(step) {
   }
 
   else if (step === 7) {
-    const cts = data?.constraints || [];
+    const cts = generateConstraintsFromProcess();
     const body = document.getElementById('ctBody');
     body.innerHTML = cts.map(c => `
       <div class="ct-item">
@@ -2976,6 +3120,7 @@ function resetAll() {
 
 var db = null;
 var currentGroupCode = null;
+var currentSessionCode = null;
 var autoSaveTimer = null;
 var STEP_NAMES_KR = ['문제 정의','MECE 분석','5 Why','해결방안','증거 탐색','이해관계자','제약 조건','실행 계획','컨셉 도출','종합 기획서'];
 
@@ -3002,29 +3147,54 @@ function initFirebase() {
   }
 }
 
-// ── 로비 탭 전환 ──
-function switchTab(tab) {
-  document.getElementById('tabStudent').classList.toggle('active', tab === 'student');
-  document.getElementById('tabAdmin'  ).classList.toggle('active', tab === 'admin');
-  document.getElementById('panelStudent').style.display = tab === 'student' ? '' : 'none';
-  document.getElementById('panelAdmin'  ).style.display = tab === 'admin'   ? '' : 'none';
-  document.getElementById('lobbyErr').textContent = '';
+// ── 세션 코드 입장 ──
+function enterSession() {
+  var code = (document.getElementById('sessionCodeInput').value || '').trim().toUpperCase();
+  var errEl = document.getElementById('sessionErr');
+  if (!code || code.length < 4) { errEl.textContent = '4자리 코드를 입력해주세요.'; return; }
+  errEl.textContent = '';
+  if (db) {
+    db.ref('sessions/' + code).once('value', function(snap) {
+      if (!snap.exists()) { errEl.textContent = '유효하지 않은 코드입니다.'; return; }
+      var session = snap.val();
+      if (session.active === false) { errEl.textContent = '이 세션은 종료되었습니다. 강사에게 문의하세요.'; return; }
+      currentSessionCode = code;
+      document.getElementById('screen-session').style.display = 'none';
+      document.getElementById('screen-lobby').style.display = 'flex';
+      if (session.company) {
+        document.getElementById('lobbySub').innerHTML =
+          '조 코드를 입력하면 워크스페이스가 열립니다.<br><strong style="color:var(--blue);">' + session.company + '</strong>';
+      }
+    });
+  } else {
+    currentSessionCode = code;
+    document.getElementById('screen-session').style.display = 'none';
+    document.getElementById('screen-lobby').style.display = 'flex';
+  }
+}
+
+function showAdminFromSession() {
+  document.getElementById('screen-session').style.display = 'none';
+  document.getElementById('screen-admin-login').style.display = 'flex';
+}
+
+function backToSession() {
+  document.getElementById('screen-admin-login').style.display = 'none';
+  document.getElementById('screen-session').style.display = 'flex';
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminLoginErr').textContent = '';
 }
 
 // ── 교육생 입장 ──
 function enterGroup() {
   var code = (document.getElementById('groupCodeInput').value || '').trim();
   if (!code) { document.getElementById('lobbyErr').textContent = '조 코드를 입력해주세요.'; return; }
-  if (ALLOWED_CODES.length && !ALLOWED_CODES.includes(code)) {
-    document.getElementById('lobbyErr').textContent = '"' + code + '"은 유효하지 않은 코드입니다.';
-    return;
-  }
   currentGroupCode = code;
   document.getElementById('screen-lobby').style.display = 'none';
-  // 헤더에 조 표시
   var pill = document.querySelector('.step-pill');
-  if (pill) pill.insertAdjacentHTML('beforebegin', '<div style="font-size:11px;background:rgba(59,130,246,.15);color:var(--blue);border-radius:20px;padding:2px 10px;font-weight:700;">' + code + '</div>');
-  // 저장된 데이터 불러오기
+  if (pill) pill.insertAdjacentHTML('beforebegin',
+    '<div style="font-size:11px;background:rgba(59,130,246,.15);color:var(--blue);border-radius:20px;padding:2px 10px;font-weight:700;">' +
+    (currentSessionCode ? currentSessionCode + ' · ' : '') + code + '</div>');
   loadGroupData(code, function() {
     buildProg(); buildScGrid(); buildMeceFrameGrid();
   });
@@ -3036,46 +3206,41 @@ var _adminListener = null;
 function enterAdmin() {
   var pw = document.getElementById('adminPwInput').value || '';
   if (pw !== ADMIN_PASSWORD) {
-    document.getElementById('lobbyErr').textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('adminLoginErr').textContent = '비밀번호가 올바르지 않습니다.';
     return;
   }
-  document.getElementById('screen-lobby').style.display = 'none';
+  document.getElementById('screen-admin-login').style.display = 'none';
   document.getElementById('screen-admin').style.display = 'block';
-
-  if (db) {
-    // 실시간 리스너 설정
-    var ref = db.ref('groups');
-    _adminListener = function(snap) {
-      var allData = snap.val() || {};
-      var codes = ALLOWED_CODES.length ? ALLOWED_CODES.slice() : [];
-      Object.keys(allData).forEach(function(k){ if(!codes.includes(k)) codes.push(k); });
-      renderGroupGrid(codes, allData);
-      document.getElementById('adminLastSync').textContent = '실시간 동기화 ● ' + new Date().toLocaleTimeString('ko-KR');
-    };
-    ref.on('value', _adminListener);
-  } else {
-    loadAllGroups();
-  }
+  populateSessionFilter();
+  loadAllSessions();
 }
 
 function exitAdmin() {
   if (db && _adminListener) {
-    db.ref('groups').off('value', _adminListener);
+    try { db.ref().off('value', _adminListener); } catch(e) {}
     _adminListener = null;
   }
   document.getElementById('screen-admin').style.display = 'none';
-  document.getElementById('screen-lobby').style.display = 'flex';
+  document.getElementById('screen-session').style.display = 'flex';
   document.getElementById('adminPwInput').value = '';
+}
+
+function switchAdminTab(tab) {
+  document.getElementById('adminTab1').classList.toggle('active', tab === 'groups');
+  document.getElementById('adminTab2').classList.toggle('active', tab === 'sessions');
+  document.getElementById('adminPanelGroups').style.display   = tab === 'groups'   ? '' : 'none';
+  document.getElementById('adminPanelSessions').style.display = tab === 'sessions' ? '' : 'none';
+  if (tab === 'sessions') loadAllSessions();
 }
 
 // ── 데이터 저장 ──
 function collectAllData() {
   var data = {
-    groupCode:    currentGroupCode,
-    currentStep:  cur,
-    scenarioId:   sc ? sc.id : null,
-    lastUpdated:  new Date().toISOString(),
-    stepOutputs:  stepOutputs,
+    groupCode:   currentGroupCode,
+    currentStep: cur,
+    scenarioId:  sc ? sc.id : null,
+    lastUpdated: new Date().toISOString(),
+    stepOutputs: stepOutputs,
     fields: {}
   };
   var ids = ['s1asis','s1tobe','s1gap','s1persona','s1collab','s1why_persona',
@@ -3086,12 +3251,10 @@ function collectAllData() {
     var el = document.getElementById(id);
     if (el) data.fields[id] = el.value || '';
   });
-  // MECE
   data.meceData = meceData;
-  // Why chain
   var why = [];
-  for (var i=0; i<5; i++) {
-    var w = document.getElementById('why'+i);
+  for (var i = 0; i < 5; i++) {
+    var w = document.getElementById('why' + i);
     why.push(w ? w.value : '');
   }
   data.whyChain = why;
@@ -3102,24 +3265,32 @@ function saveGroupData() {
   if (!currentGroupCode) return;
   var data = collectAllData();
   if (db) {
-    db.ref('groups/' + currentGroupCode).set(data);
+    var path = currentSessionCode
+      ? 'groups/' + currentSessionCode + '/' + currentGroupCode
+      : 'groups/default/' + currentGroupCode;
+    db.ref(path).set(data);
   } else {
-    try { localStorage.setItem('psm_group_' + currentGroupCode, JSON.stringify(data)); } catch(e){}
+    var key = (currentSessionCode || 'demo') + '_' + currentGroupCode;
+    try { localStorage.setItem('psm_group_' + key, JSON.stringify(data)); } catch(e) {}
   }
 }
 
 // ── 데이터 불러오기 ──
 function loadGroupData(code, callback) {
   if (db) {
-    db.ref('groups/' + code).once('value', function(snap) {
+    var path = currentSessionCode
+      ? 'groups/' + currentSessionCode + '/' + code
+      : 'groups/default/' + code;
+    db.ref(path).once('value', function(snap) {
       if (snap.exists()) applyGroupData(snap.val());
       if (callback) callback();
     });
   } else {
+    var key = (currentSessionCode || 'demo') + '_' + code;
     try {
-      var raw = localStorage.getItem('psm_group_' + code);
+      var raw = localStorage.getItem('psm_group_' + key);
       if (raw) applyGroupData(JSON.parse(raw));
-    } catch(e){}
+    } catch(e) {}
     if (callback) callback();
   }
 }
@@ -3129,9 +3300,8 @@ function applyGroupData(data) {
   stepOutputs = data.stepOutputs || {};
   meceData = data.meceData || { cats: [], leaves: {} };
   if (data.scenarioId) {
-    sc = SCENARIOS.find(function(s){ return s.id === data.scenarioId; }) || null;
+    sc = SCENARIOS.find(function(s) { return s.id === data.scenarioId; }) || null;
   }
-  // 필드 복원
   var fields = data.fields || {};
   Object.keys(fields).forEach(function(id) {
     var el = document.getElementById(id);
@@ -3143,7 +3313,7 @@ function applyGroupData(data) {
   }
 }
 
-// ── 자동 저장 (단계 이동 시 + 입력 변경 시) ──
+// ── 자동 저장 ──
 var _origGoNext = null;
 var _saveTimer = null;
 function wrapGoNext() {
@@ -3152,7 +3322,6 @@ function wrapGoNext() {
     _origGoNext(step);
     saveGroupData();
   };
-  // 입력 필드 자동저장 (2초 debounce)
   document.addEventListener('input', function(e) {
     if (!currentGroupCode) return;
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
@@ -3162,53 +3331,64 @@ function wrapGoNext() {
   });
 }
 
-// ── 관리자: 전체 조 불러오기 ──
+// ── 관리자: 세션 필터 채우기 ──
+function populateSessionFilter() {
+  if (!db) return;
+  db.ref('sessions').once('value', function(snap) {
+    var sessions = snap.val() || {};
+    var sel = document.getElementById('sessionFilter');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— 세션 선택 —</option>';
+    Object.keys(sessions).sort(function(a, b) {
+      return new Date(sessions[b].createdAt || 0) - new Date(sessions[a].createdAt || 0);
+    }).forEach(function(code) {
+      var opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = code + '  ·  ' + sessions[code].company + (sessions[code].active ? '' : '  [종료]');
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// ── 관리자: 조 현황 불러오기 ──
 function loadAllGroups() {
   var grid = document.getElementById('groupGrid');
+  var sessionCode = (document.getElementById('sessionFilter') ? document.getElementById('sessionFilter').value : '').trim();
+  if (!sessionCode) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;">위 드롭다운에서 세션을 선택하세요.</div>';
+    return;
+  }
   grid.innerHTML = '<div style="color:var(--muted);font-size:13px;">불러오는 중...</div>';
-  var codes = ALLOWED_CODES.length ? ALLOWED_CODES : [];
-
   if (db) {
-    db.ref('groups').once('value', function(snap) {
+    db.ref('groups/' + sessionCode).once('value', function(snap) {
       var allData = snap.val() || {};
-      // ALLOWED_CODES에 없는 조도 포함
-      Object.keys(allData).forEach(function(k){ if(!codes.includes(k)) codes.push(k); });
-      renderGroupGrid(codes, allData);
-      document.getElementById('adminLastSync').textContent = '최종 동기화: ' + new Date().toLocaleTimeString('ko-KR');
+      renderGroupGrid(Object.keys(allData), allData);
+      document.getElementById('adminLastSync').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR');
     });
   } else {
-    var allData = {};
-    codes.forEach(function(code) {
-      try {
-        var raw = localStorage.getItem('psm_group_' + code);
-        if (raw) allData[code] = JSON.parse(raw);
-      } catch(e){}
-    });
-    renderGroupGrid(codes, allData);
-    document.getElementById('adminLastSync').textContent = '데모 모드 (localStorage)';
+    grid.innerHTML = '<div style="color:var(--muted);">Firebase 미연결 상태입니다.</div>';
   }
 }
 
 function renderGroupGrid(codes, allData) {
   var grid = document.getElementById('groupGrid');
   if (!codes.length) {
-    grid.innerHTML = '<div style="color:var(--muted);">등록된 조가 없습니다. ALLOWED_CODES를 설정하세요.</div>';
+    grid.innerHTML = '<div style="color:var(--muted);">아직 입장한 조가 없습니다.</div>';
     return;
   }
   grid.innerHTML = '';
   codes.forEach(function(code) {
     var d = allData[code] || null;
     var step = d ? (d.currentStep || 0) : 0;
-    var pct  = Math.round(step / 10 * 100);
-    var prob = d && d.fields ? (d.fields.s1gap || d.stepOutputs && d.stepOutputs[1] || '') : '';
-    var sol  = d && d.fields ? (d.fields.s4sol1 || d.stepOutputs && d.stepOutputs[4] || '') : '';
-    var updated = d ? new Date(d.lastUpdated).toLocaleString('ko-KR') : '미접속';
+    var pct = Math.round(step / 10 * 100);
+    var prob = d && d.fields ? (d.fields.s1gap || (d.stepOutputs && d.stepOutputs[1]) || '') : '';
+    var sol  = d && d.fields ? (d.fields.s4sol1 || (d.stepOutputs && d.stepOutputs[4]) || '') : '';
+    var updated = d && d.lastUpdated ? new Date(d.lastUpdated).toLocaleString('ko-KR') : '미접속';
     var stepLabel = step ? 'STEP ' + step + '/10 진행중' : '미시작';
     var badgeCls = step >= 10 ? 'gs-done' : step > 0 ? 'gs-active' : 'gs-waiting';
-
     var card = document.createElement('div');
     card.className = 'group-card';
-    card.onclick = function() { showGroupModal(code, d); };
+    card.onclick = (function(c, dd) { return function() { showGroupModal(c, dd); }; })(code, d);
     card.innerHTML =
       '<div class="group-card-hdr">' +
         '<div class="group-name">👥 ' + code + '</div>' +
@@ -3218,25 +3398,147 @@ function renderGroupGrid(codes, allData) {
       '<div class="group-info">' +
         (prob ? '<div><strong>문제 정의:</strong> ' + prob.slice(0,50) + (prob.length>50?'…':'') + '</div>' : '<div style="color:var(--muted);">문제 미입력</div>') +
         (sol  ? '<div style="margin-top:4px;"><strong>해결방안:</strong> ' + sol.slice(0,40) + (sol.length>40?'…':'') + '</div>' : '') +
-        '<div style="margin-top:6px;font-size:11px;color:var(--muted);">최종 업데이트: ' + updated + '</div>' +
+        '<div style="margin-top:6px;font-size:11px;color:var(--muted);">최종: ' + updated + '</div>' +
       '</div>';
     grid.appendChild(card);
   });
 }
 
 function refreshAdmin() {
-  if (db) {
-    // 실시간 리스너가 이미 활성화되어 있으면 즉시 한 번 더 읽음
-    db.ref('groups').once('value', function(snap) {
-      var allData = snap.val() || {};
-      var codes = ALLOWED_CODES.length ? ALLOWED_CODES.slice() : [];
-      Object.keys(allData).forEach(function(k){ if(!codes.includes(k)) codes.push(k); });
-      renderGroupGrid(codes, allData);
-      document.getElementById('adminLastSync').textContent = '수동 새로고침: ' + new Date().toLocaleTimeString('ko-KR');
-    });
-  } else {
-    loadAllGroups();
+  populateSessionFilter();
+  loadAllGroups();
+  var isSessionTab = document.getElementById('adminTab2') && document.getElementById('adminTab2').classList.contains('active');
+  if (isSessionTab) loadAllSessions();
+  document.getElementById('adminLastSync').textContent = '새로고침: ' + new Date().toLocaleTimeString('ko-KR');
+}
+
+// ── 세션 관리 ──
+function loadAllSessions() {
+  var grid = document.getElementById('sessionGrid');
+  if (!db) { grid.innerHTML = '<div style="color:var(--muted);">Firebase 미연결 상태입니다.</div>'; return; }
+  grid.innerHTML = '<div style="color:var(--muted);font-size:13px;">불러오는 중...</div>';
+  db.ref('sessions').once('value', function(snap) {
+    renderSessionGrid(snap.val() || {});
+  });
+}
+
+function renderSessionGrid(sessions) {
+  var grid = document.getElementById('sessionGrid');
+  var keys = Object.keys(sessions);
+  if (!keys.length) {
+    grid.innerHTML = '<div style="color:var(--muted);">세션이 없습니다. 위에서 새 세션을 생성하세요.</div>';
+    return;
   }
+  grid.innerHTML = '';
+  keys.sort(function(a, b) { return new Date(sessions[b].createdAt || 0) - new Date(sessions[a].createdAt || 0); });
+  keys.forEach(function(code) {
+    var s = sessions[code];
+    var created = s.createdAt ? new Date(s.createdAt).toLocaleDateString('ko-KR') : '—';
+    var card = document.createElement('div');
+    card.className = 'session-card' + (s.active ? '' : ' inactive');
+    var isActive = !!s.active;
+    var company = s.company || code;
+    var toggleStyle = isActive
+      ? 'background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);'
+      : 'background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);';
+    var toggleLabel = isActive ? '⏹ 세션 종료' : '▶ 활성화';
+    card.innerHTML =
+      '<div class="session-code-badge">' + code + '</div>' +
+      '<div class="session-company">' + company + '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;">' +
+        '<span class="session-status ' + (isActive ? 'on' : 'off') + '">' + (isActive ? '● 활성' : '● 종료') + '</span>' +
+        '<span style="font-size:11px;color:var(--muted);">생성: ' + created + '</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<button class="btn btn-sec btn-sm" data-view="1" style="font-size:12px;">📊 조별 현황</button>' +
+        '<button class="btn btn-sm" data-toggle="1" style="font-size:12px;' + toggleStyle + '">' + toggleLabel + '</button>' +
+      '</div>';
+    card.querySelector('[data-view]').addEventListener('click', (function(c, co) {
+      return function() { viewSessionGroups(c, co); };
+    })(code, company));
+    card.querySelector('[data-toggle]').addEventListener('click', (function(c, act) {
+      return function() { toggleSessionActive(c, act); };
+    })(code, isActive));
+    grid.appendChild(card);
+  });
+}
+
+function createSession() {
+  if (!db) { alert('Firebase 미연결 상태입니다.'); return; }
+  var company = (document.getElementById('newSessionCompany').value || '').trim();
+  if (!company) { alert('회사/교육명을 입력하세요.'); return; }
+  var code = (document.getElementById('newSessionCode').value || '').trim().toUpperCase();
+  if (!code) {
+    code = Math.random().toString(36).substring(2, 6).toUpperCase();
+  }
+  if (code.length !== 4) { alert('코드는 정확히 4자리여야 합니다.'); return; }
+  db.ref('sessions/' + code).once('value', function(snap) {
+    if (snap.exists()) { alert('"' + code + '" 코드가 이미 존재합니다. 다른 코드를 입력하세요.'); return; }
+    db.ref('sessions/' + code).set({
+      company: company, active: true, createdAt: new Date().toISOString()
+    }, function() {
+      document.getElementById('newSessionCompany').value = '';
+      document.getElementById('newSessionCode').value = '';
+      loadAllSessions();
+      populateSessionFilter();
+      alert('세션 생성 완료!\n코드: ' + code + '\n회사: ' + company + '\n\n교육생에게 이 코드를 공유하세요.');
+    });
+  });
+}
+
+function toggleSessionActive(code, currentlyActive) {
+  if (!db) return;
+  var newState = !currentlyActive;
+  var msg = newState
+    ? '"' + code + '" 세션을 활성화하시겠습니까?'
+    : '"' + code + '" 세션을 종료합니까?\n종료 후 교육생은 접속할 수 없습니다.';
+  if (!confirm(msg)) return;
+  db.ref('sessions/' + code + '/active').set(newState, function() {
+    loadAllSessions();
+    populateSessionFilter();
+  });
+}
+
+var _vsgData = {};  // viewSessionGroups 데이터 캐시
+
+function viewSessionGroups(sessionCode, company) {
+  document.getElementById('modalGroupName').textContent = '📊 ' + company + '  (' + sessionCode + ')  조별 현황';
+  var body = document.getElementById('modalBody');
+  body.innerHTML = '<div style="color:var(--muted);font-size:13px;">불러오는 중...</div>';
+  document.getElementById('adminModal').classList.add('show');
+  if (!db) { body.innerHTML = '<p style="color:var(--muted);">Firebase 미연결 상태입니다.</p>'; return; }
+  db.ref('groups/' + sessionCode).once('value', function(snap) {
+    var allData = snap.val() || {};
+    _vsgData = allData;  // 전역 캐시에 저장
+    var keys = Object.keys(allData);
+    if (!keys.length) { body.innerHTML = '<p style="color:var(--muted);">아직 입장한 조가 없습니다.</p>'; return; }
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;';
+    keys.forEach(function(gCode) {
+      var d = allData[gCode];
+      var step = d ? (d.currentStep || 0) : 0;
+      var pct = Math.round(step / 10 * 100);
+      var prob = d && d.fields ? (d.fields.s1gap || '') : '';
+      var updated = d && d.lastUpdated ? new Date(d.lastUpdated).toLocaleString('ko-KR') : '—';
+      var badgeCls = step >= 10 ? 'gs-done' : step > 0 ? 'gs-active' : 'gs-waiting';
+      var stepLabel = step ? 'STEP ' + step + '/10' : '미시작';
+      var card = document.createElement('div');
+      card.className = 'group-card';
+      card.style.cursor = 'pointer';
+      card.innerHTML =
+        '<div class="group-card-hdr"><div class="group-name">👥 ' + gCode + '</div>' +
+        '<span class="group-step-badge ' + badgeCls + '">' + stepLabel + '</span></div>' +
+        '<div class="group-prog-bar"><div class="group-prog-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="group-info">' + (prob ? prob.slice(0,50) + (prob.length>50?'…':'') : '<span style="color:var(--muted);">문제 미입력</span>') + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px;">최종: ' + updated + '</div>';
+      card.addEventListener('click', (function(c) {
+        return function() { showGroupModal(c, _vsgData[c]); };
+      })(gCode));
+      wrap.appendChild(card);
+    });
+    body.innerHTML = '';
+    body.appendChild(wrap);
+  });
 }
 
 // ── 그룹 상세 모달 ──
@@ -3266,7 +3568,6 @@ function showGroupModal(code, d) {
       html += '<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--muted);white-space:nowrap;width:140px;font-weight:600;">' + r[0] + '</td>' +
               '<td style="padding:8px 12px;border-bottom:1px solid var(--border);">' + r[1] + '</td></tr>';
     });
-    // Why chain
     if (d.whyChain && d.whyChain.some(function(w){return w;})) {
       html += '<tr><td colspan="2" style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;color:var(--blue);">5Why 체인</td></tr>';
       var labels = ['현상','Why1','Why2','Why3','근본원인'];
