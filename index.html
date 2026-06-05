@@ -1548,13 +1548,7 @@ const DEMO_MODE       = false;  // Firebase 연결됨
         <div style="font-size:11px;opacity:.8;font-weight:400;">.doc 파일 다운로드</div>
       </span>
     </button>
-    <button class="ai-btn" id="btnPdfDoc" onclick="generatePdfDoc()" style="flex:1;min-width:200px;background:linear-gradient(135deg,#DC2626,#EF4444);">
-      <span style="font-size:18px;">📑</span>
-      <span>
-        <div style="font-size:14px;font-weight:700;">기획서 초안 완성 — PDF</div>
-        <div style="font-size:11px;opacity:.8;font-weight:400;">인쇄창 → PDF로 저장</div>
-      </span>
-    </button>
+
   </div>
   <div style="margin-top:10px;display:flex;gap:10px;">
     <button class="btn btn-sec btn-sm" onclick="copyProposal()">📋 텍스트 복사</button>
@@ -3503,211 +3497,103 @@ function generateWordDoc() {
 
 
 
-function generatePdfDoc() {
-  var d = collectProposalData();
-  var btn = document.getElementById('btnPdfDoc');
-  btn.disabled = true; btn.innerHTML = '<span>⏳</span> 준비 중...';
-
-  function esc(s) { return (s||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-  // Word와 동일한 HTML 구조 재사용 (printHtml 빌더)
-  function buildPrintHtml(d) {
-    function h1(t)  { return '<h1>' + esc(t) + '</h1>'; }
-    function h2(t)  { return '<h2>' + esc(t) + '</h2>'; }
-    function body(t){ return '<p>' + esc(t) + '</p>'; }
-    function kv(k,v){ return '<p><b>' + esc(k) + '</b>&nbsp;&nbsp;' + esc(v) + '</p>'; }
-    function hr()   { return '<hr>'; }
-    function box(label, text, bg, bc) {
-      return '<div class="box" style="background:' + bg + ';border-left:4px solid ' + bc + ';">' +
-             '<div class="box-label" style="color:' + bc + ';">' + esc(label) + '</div>' +
-             '<div>' + esc(text) + '</div></div>';
-    }
-
-    var rows = '';
-    // 표지
-    rows += '<div class="cover">';
-    rows += '<div class="cover-title">' + esc(d.slogan) + '</div>';
-    if (d.catchPhr) rows += '<div class="cover-sub">' + esc(d.catchPhr) + '</div>';
-    rows += '<div class="cover-meta">담당: ' + esc(d.persona) + '&nbsp;&nbsp;|&nbsp;&nbsp;작성일: ' + esc(d.today) + '</div>';
-    if (d.keywords) rows += '<div class="cover-kw">키워드: ' + esc(d.keywords) + '</div>';
-    rows += '</div><div class="page-break"></div>';
-
-    // 1. 목적
-    rows += h1('1. 목적 및 문제 정의');
-    rows += h2('1-1. 문제 정의'); rows += body(d.probDef);
-    rows += h2('1-2. 현재 상황 vs 목표');
-    rows += '<table class="two-col"><tr>';
-    rows += '<td class="cell-red"><div class="cell-label">현재 상황</div>' + esc(d.asis) + '</td>';
-    rows += '<td class="cell-green"><div class="cell-label">문제 해결된 모습</div>' + esc(d.tobe) + '</td>';
-    rows += '</tr></table>';
-    rows += kv('GAP 서술', d.gap);
-    rows += kv('우선순위 판단', d.priority);
-    rows += hr();
-
-    // 2. 상황 분석
-    rows += h1('2. 상황 분석');
-    if (d.meceLines.length) {
-      rows += h2('2-1. 원인 분류 (MECE)');
-      d.meceLines.forEach(function(l){ rows += body(l); });
-    }
-    if (d.whyChains.length) {
-      d.whyChains.forEach(function(wc, wi) {
-        rows += h2('2-' + (wi+2) + '. 5Why 탐색' + (wc.cause ? ' — ' + wc.cause : ''));
-        var labels = ['현상','Why 1','Why 2','Why 3','근본 원인'];
-        wc.chain.forEach(function(w, i) {
-          rows += '<p style="margin-left:' + (i*14) + 'px;"><b style="color:' + (i===wc.chain.length-1?'#059669':'#1A6FCC') + ';">' +
-                  esc(labels[i]||('Why'+i)) + '</b>&nbsp;' + esc(w) + '</p>';
-        });
-      });
-    }
-    rows += box('도출된 근본 원인', d.rootCause, '#f0fdf4', '#059669');
-    rows += hr();
-
-    // 3. 방향
-    rows += h1('3. 핵심 해결방안');
-    var solBg = ['#eff6ff','#fffbeb','#f5f3ff'];
-    var solBd = ['#1A6FCC','#D97706','#7C3AED'];
-    d.sols.forEach(function(s,i){ rows += box((i+1)+'순위', s, solBg[i]||'#f8faff', solBd[i]||'#888'); });
-    rows += hr();
-
-    // 4. 이해관계자
-    rows += h1('4. 이해관계자 설득 전략');
-    d.stakeholders.forEach(function(s) {
-      rows += h2(s.icon + ' ' + s.dept);
-      rows += kv('우려 사항', s.concern);
-      rows += kv('설득 논리', s.logic);
-    });
-    rows += hr();
-
-    // 5. 실행 계획
-    rows += h1('5. 실행 계획');
-    if (d.actions.length) {
-      rows += '<table class="act-table"><thead><tr><th>단계</th><th>과제</th><th>담당</th><th>기한</th><th>KPI</th></tr></thead><tbody>';
-      d.actions.forEach(function(a,i){
-        rows += '<tr class="' + (i%2===0?'row-even':'') + '"><td class="center phase">' + esc(a.phase) + '</td>' +
-                '<td><b>' + esc(a.task) + '</b></td><td class="center">' + esc(a.owner) +
-                '</td><td class="center">' + esc(a.due) + '</td><td>' + esc(a.kpi) + '</td></tr>';
-      });
-      rows += '</tbody></table>';
-    } else { rows += body('실행 계획을 Step 8에서 입력해주세요.'); }
-    rows += hr();
-
-    // 6. 제약 조건
-    rows += h1('6. 제약 조건');
-    d.constraints.forEach(function(c){ rows += kv(c.type, c.body); });
-    rows += hr();
-
-    // 7. 기대효과
-    rows += h1('7. 기대효과 및 리스크');
-    rows += box('기대효과', d.impact, '#f0fdf4', '#059669');
-    rows += box('방치 시 리스크', d.risk, '#fef2f2', '#DC2626');
-    if (d.keywords) rows += kv('핵심 키워드', d.keywords);
-
-    return rows;
-  }
-
-  var bodyHtml = buildPrintHtml(d);
-
-  var printHtml = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">' +
-    '<title>' + d.slogan.replace(/</g,'') + ' — 기획서 초안</title>' +
-    '<style>' +
-    '@page { margin: 2cm 2.5cm; size: A4; }' +
-    'body { font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; font-size: 10.5pt; color: #1A1A2E; line-height: 1.65; margin: 0; }' +
-    'h1 { font-size: 14pt; color: #1A6FCC; border-bottom: 2px solid #1A6FCC; padding-bottom: 4pt; margin: 20pt 0 8pt; }' +
-    'h2 { font-size: 11.5pt; color: #1A1A2E; margin: 12pt 0 5pt; }' +
-    'p  { margin: 4pt 0; }' +
-    'hr { border: none; border-top: 1px solid #CCC; margin: 14pt 0; }' +
-    '.cover { text-align: center; padding: 80pt 0 50pt; }' +
-    '.cover-title { font-size: 22pt; font-weight: bold; color: #1A6FCC; margin-bottom: 8pt; }' +
-    '.cover-sub { font-size: 13pt; color: #555; font-style: italic; margin-bottom: 16pt; }' +
-    '.cover-meta { font-size: 10pt; color: #888; }' +
-    '.cover-kw  { font-size: 9pt; color: #888; margin-top: 5pt; }' +
-    '.page-break { page-break-after: always; }' +
-    '.box { padding: 7pt 10pt; margin: 5pt 0; border-radius: 4pt; }' +
-    '.box-label { font-size: 8.5pt; font-weight: bold; margin-bottom: 3pt; }' +
-    '.two-col { width: 100%; border-collapse: collapse; margin: 8pt 0; }' +
-    '.two-col td { width: 50%; padding: 7pt; vertical-align: top; }' +
-    '.cell-red   { background: #fef2f2; border: 1px solid #fca5a5; }' +
-    '.cell-green { background: #ecfdf5; border: 1px solid #6ee7b7; }' +
-    '.cell-label { font-size: 8.5pt; font-weight: bold; margin-bottom: 3pt; }' +
-    '.cell-red .cell-label   { color: #DC2626; }' +
-    '.cell-green .cell-label { color: #059669; }' +
-    '.act-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 6pt 0; }' +
-    '.act-table th { background: #1A6FCC; color: #fff; padding: 5pt; text-align: left; border: 1px solid #ddd; }' +
-    '.act-table td { padding: 4pt 5pt; border: 1px solid #ddd; vertical-align: top; }' +
-    '.act-table .row-even td { background: #f8faff; }' +
-    '.act-table .center { text-align: center; }' +
-    '.act-table .phase { font-weight: bold; color: #1A6FCC; text-align: center; }' +
-    '@media print { .page-break { page-break-after: always; } }' +
-    '</style></head><body>' + bodyHtml + '</body></html>';
-
-  var w = window.open('', '_blank', 'width=900,height=700');
-  if (!w) {
-    alert('팝업이 차단되었습니다. 브라우저 팝업 허용 후 다시 시도해주세요.');
-    btn.disabled = false;
-    return;
-  }
-  w.document.write(printHtml);
-  w.document.close();
-  w.focus();
-  setTimeout(function() {
-    w.print();
-    btn.disabled = false;
-    btn.innerHTML = '<span style="font-size:18px;">📑</span><span><div style="font-size:14px;font-weight:700;">기획서 초안 완성 — PDF</div><div style="font-size:11px;opacity:.8;font-weight:400;">인쇄창 → PDF로 저장</div></span>';
-  }, 400);
-}
-
 function copyProposal() {
-  var slogan  = document.getElementById('s9slogan') ? document.getElementById('s9slogan').value : '';
-  var prob    = stepOutputs[1] || (document.getElementById('s1gap') ? document.getElementById('s1gap').value : '');
-  var root    = stepOutputs[3] || '';
-  var sol     = stepOutputs[4] || '';
-  var impact  = document.getElementById('s1impact') ? document.getElementById('s1impact').value : '';
-  var risk    = document.getElementById('s1risk')   ? document.getElementById('s1risk').value   : '';
-  var persona = document.getElementById('s1persona') ? document.getElementById('s1persona').value : '';
-  var today   = new Date().toLocaleDateString('ko-KR');
+  var d = collectProposalData();
+  var sep = '─────────────────────────────────';
+  var lines = [];
 
-  // WBS 요약
-  var actLines = [];
-  document.querySelectorAll('#actBody tr').forEach(function(r) {
-    var inputs = r.querySelectorAll('input');
-    var phase  = r.querySelector('.phase-tag');
-    if (inputs[0] && inputs[0].value.trim()) {
-      actLines.push('  [' + (phase ? phase.textContent : '') + '] ' + inputs[0].value + ' — ' + (inputs[1] ? inputs[1].value : '') + ' / ' + (inputs[2] ? inputs[2].value : ''));
-    }
+  lines.push('■ 기획서 초안');
+  lines.push('작성일: ' + d.today + '  담당: ' + d.persona);
+  if (d.keywords) lines.push('키워드: ' + d.keywords);
+  lines.push('');
+
+  // 1. 목적
+  lines.push(sep);
+  lines.push('1. 목적 및 문제 정의');
+  lines.push(sep);
+  lines.push('▸ 문제 정의: ' + (d.probDef || '—'));
+  lines.push('▸ 현재 상황: ' + (d.asis || '—'));
+  lines.push('▸ 문제 해결된 모습: ' + (d.tobe || '—'));
+  lines.push('▸ GAP 서술: ' + (d.gap || '—'));
+  lines.push('▸ 우선순위 판단: ' + (d.priority || '—'));
+  lines.push('');
+
+  // 2. 상황 분석
+  lines.push(sep);
+  lines.push('2. 상황 분석');
+  lines.push(sep);
+  if (d.meceLines.length) {
+    lines.push('[원인 분류 MECE]');
+    d.meceLines.forEach(function(l){ lines.push('  ' + l); });
+    lines.push('');
+  }
+  if (d.whyChains.length) {
+    d.whyChains.forEach(function(wc, wi) {
+      lines.push('[5Why 탐색' + (wc.cause ? ' — ' + wc.cause : '') + ']');
+      var labels = ['현상','Why1','Why2','Why3','근본원인'];
+      wc.chain.forEach(function(w, i){
+        lines.push('  ' + (labels[i] || 'Why'+i) + ': ' + w);
+      });
+      lines.push('');
+    });
+  }
+  lines.push('▸ 도출된 근본 원인: ' + (d.rootCause || '—'));
+  lines.push('');
+
+  // 3. 해결방안
+  lines.push(sep);
+  lines.push('3. 핵심 해결방안');
+  lines.push(sep);
+  d.sols.forEach(function(s, i){ lines.push('  ' + (i+1) + '순위: ' + s); });
+  lines.push('');
+
+  // 4. 이해관계자
+  lines.push(sep);
+  lines.push('4. 이해관계자 설득 전략');
+  lines.push(sep);
+  d.stakeholders.forEach(function(s) {
+    lines.push(s.icon + ' ' + s.dept);
+    lines.push('  우려: ' + s.concern);
+    lines.push('  설득: ' + s.logic);
+    lines.push('');
   });
 
-  var txt = [
-    '■ 종합 기획서',
-    '작성일: ' + today + '  담당: ' + persona,
-    '',
-    '【컨셉】',
-    slogan,
-    '',
-    '【목적】',
-    prob,
-    '',
-    '【방향】',
-    '근본원인: ' + root,
-    '핵심 해결방안: ' + sol,
-    '',
-    '【실행 계획】',
-    actLines.join('\n') || '—',
-    '',
-    '【기대효과】',
-    impact,
-    '',
-    '【리스크】',
-    risk,
-    '',
-    '© 2026 GAM CONSULTING | Problem-Solving Master'
-  ].join('\n');
+  // 5. 실행 계획
+  lines.push(sep);
+  lines.push('5. 실행 계획');
+  lines.push(sep);
+  if (d.actions.length) {
+    d.actions.forEach(function(a){
+      lines.push('  [' + (a.phase||'—') + '] ' + a.task);
+      lines.push('       담당: ' + (a.owner||'—') + ' / 기한: ' + (a.due||'—') + ' / KPI: ' + (a.kpi||'—'));
+    });
+  } else {
+    lines.push('  —');
+  }
+  lines.push('');
 
-  // 클립보드 복사 (로컬 파일 환경 호환)
+  // 6. 제약 조건
+  lines.push(sep);
+  lines.push('6. 제약 조건');
+  lines.push(sep);
+  d.constraints.forEach(function(c){ lines.push('  ▸ ' + c.type + ': ' + c.body); });
+  lines.push('');
+
+  // 7. 기대효과 & 리스크
+  lines.push(sep);
+  lines.push('7. 기대효과 및 리스크');
+  lines.push(sep);
+  lines.push('▸ 기대효과: ' + (d.impact || '—'));
+  lines.push('▸ 방치 시 리스크: ' + (d.risk || '—'));
+  lines.push('');
+  lines.push('© 2026 GAM CONSULTING | Problem-Solving Master');
+
+  var txt = lines.join('\n');
+
   try {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(txt).then(function() {
-        alert('클립보드에 복사되었습니다.');
+        alert('전체 기획서가 클립보드에 복사되었습니다.');
       }).catch(function() { fallbackCopy(txt); });
     } else {
       fallbackCopy(txt);
