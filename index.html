@@ -1526,6 +1526,7 @@ function selectMeceFrame(id) {
 // ── Scenario Grid ──
 function buildScGrid() {
   const g = document.getElementById('scGrid');
+  g.innerHTML = '';  // 기존 항목 초기화 후 재생성
   SCENARIOS.forEach(s => {
     const c = document.createElement('div');
     c.className = 'sc-card';
@@ -3020,6 +3021,8 @@ function enterGroup() {
 }
 
 // ── 관리자 로그인 ──
+var _adminListener = null;
+
 function enterAdmin() {
   var pw = document.getElementById('adminPwInput').value || '';
   if (pw !== ADMIN_PASSWORD) {
@@ -3028,9 +3031,28 @@ function enterAdmin() {
   }
   document.getElementById('screen-lobby').style.display = 'none';
   document.getElementById('screen-admin').style.display = 'block';
-  loadAllGroups();
+
+  if (db) {
+    // 실시간 리스너 설정
+    var ref = db.ref('groups');
+    _adminListener = function(snap) {
+      var allData = snap.val() || {};
+      var codes = ALLOWED_CODES.length ? ALLOWED_CODES.slice() : [];
+      Object.keys(allData).forEach(function(k){ if(!codes.includes(k)) codes.push(k); });
+      renderGroupGrid(codes, allData);
+      document.getElementById('adminLastSync').textContent = '실시간 동기화 ● ' + new Date().toLocaleTimeString('ko-KR');
+    };
+    ref.on('value', _adminListener);
+  } else {
+    loadAllGroups();
+  }
 }
+
 function exitAdmin() {
+  if (db && _adminListener) {
+    db.ref('groups').off('value', _adminListener);
+    _adminListener = null;
+  }
   document.getElementById('screen-admin').style.display = 'none';
   document.getElementById('screen-lobby').style.display = 'flex';
   document.getElementById('adminPwInput').value = '';
@@ -3111,14 +3133,23 @@ function applyGroupData(data) {
   }
 }
 
-// ── 자동 저장 (단계 이동 시) ──
+// ── 자동 저장 (단계 이동 시 + 입력 변경 시) ──
 var _origGoNext = null;
+var _saveTimer = null;
 function wrapGoNext() {
   _origGoNext = goNext;
   goNext = function(step) {
     _origGoNext(step);
     saveGroupData();
   };
+  // 입력 필드 자동저장 (2초 debounce)
+  document.addEventListener('input', function(e) {
+    if (!currentGroupCode) return;
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(saveGroupData, 2000);
+    }
+  });
 }
 
 // ── 관리자: 전체 조 불러오기 ──
@@ -3183,7 +3214,20 @@ function renderGroupGrid(codes, allData) {
   });
 }
 
-function refreshAdmin() { loadAllGroups(); }
+function refreshAdmin() {
+  if (db) {
+    // 실시간 리스너가 이미 활성화되어 있으면 즉시 한 번 더 읽음
+    db.ref('groups').once('value', function(snap) {
+      var allData = snap.val() || {};
+      var codes = ALLOWED_CODES.length ? ALLOWED_CODES.slice() : [];
+      Object.keys(allData).forEach(function(k){ if(!codes.includes(k)) codes.push(k); });
+      renderGroupGrid(codes, allData);
+      document.getElementById('adminLastSync').textContent = '수동 새로고침: ' + new Date().toLocaleTimeString('ko-KR');
+    });
+  } else {
+    loadAllGroups();
+  }
+}
 
 // ── 그룹 상세 모달 ──
 function showGroupModal(code, d) {
@@ -3229,6 +3273,7 @@ function closeModal() { document.getElementById('adminModal').classList.remove('
 
 // ── Init ──
 initFirebase();
+wrapGoNext();
 buildProg();
 buildScGrid();
 buildMeceFrameGrid();
