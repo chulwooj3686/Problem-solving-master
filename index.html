@@ -8,6 +8,10 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- 문서 생성 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <style>
 :root {
   --bg: #0F172A; --bg2: #1E293B; --bg3: #0D1B2E;
@@ -1539,10 +1543,25 @@ const DEMO_MODE       = false;  // Firebase 연결됨
 
   <div id="finalOut" style="margin-top:24px;"></div>
 
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;">
-    <button class="btn btn-ok" onclick="copyProposal()">📋 텍스트 복사</button>
-    <button class="btn btn-sec" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
-    <button class="btn btn-sec" onclick="resetAll()">🔄 새 문제 시작</button>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px;">
+    <button class="ai-btn" id="btnWordDoc" onclick="generateWordDoc()" style="flex:1;min-width:200px;">
+      <span style="font-size:18px;">📄</span>
+      <span>
+        <div style="font-size:14px;font-weight:700;">최종기획서 완성 — 세로형</div>
+        <div style="font-size:11px;opacity:.8;font-weight:400;">Word 문서 (.docx)</div>
+      </span>
+    </button>
+    <button class="ai-btn" id="btnPptDoc" onclick="generatePptDoc()" style="flex:1;min-width:200px;background:linear-gradient(135deg,#E8703A,#F5A623);">
+      <span style="font-size:18px;">📊</span>
+      <span>
+        <div style="font-size:14px;font-weight:700;">최종기획서 완성 — 가로형</div>
+        <div style="font-size:11px;opacity:.8;font-weight:400;">PowerPoint (.pptx)</div>
+      </span>
+    </button>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:10px;">
+    <button class="btn btn-sec btn-sm" onclick="copyProposal()">📋 텍스트 복사</button>
+    <button class="btn btn-sec btn-sm" onclick="resetAll()">🔄 새 문제 시작</button>
   </div>
 
   <div class="nav-bar">
@@ -1826,6 +1845,82 @@ function generateIdeasFromRootCause(rootCause) {
     { n: '핵심 지표(KPI) 주간 모니터링 + 이상 발생 즉시 보고·개선 루프 구축', e: null, f: null },
     { n: '이해관계자 워크숍 → 공동 원인 진단 + 공감대 형성 → 자발적 참여 유도', e: null, f: null }
   ];
+}
+
+// ── Step 6: 해결방안 기반 이해관계자 설득 논리 생성 ──────────
+function generateStakeholdersFromSolution() {
+  var sol1    = (document.getElementById('s4sol1') ? document.getElementById('s4sol1').value : '').trim()
+             || stepOutputs[4] || '';
+  var sol2    = (document.getElementById('s4sol2') ? document.getElementById('s4sol2').value : '').trim();
+  var sol3    = (document.getElementById('s4sol3') ? document.getElementById('s4sol3').value : '').trim();
+  var root    = stepOutputs[3] || (why3ChainData[0] ? (why3ChainData[0][4] || '') : '');
+  var gap     = (document.getElementById('s1gap')    ? document.getElementById('s1gap').value    : '').trim() || stepOutputs[1] || '';
+  var asis    = (document.getElementById('s1asis')   ? document.getElementById('s1asis').value   : '').trim();
+  var tobe    = (document.getElementById('s1tobe')   ? document.getElementById('s1tobe').value   : '').trim();
+  var persona = (document.getElementById('s1persona')? document.getElementById('s1persona').value: '').trim() || '담당팀장';
+  var collab  = (document.getElementById('s1collab') ? document.getElementById('s1collab').value : '').trim() || '유관 부서';
+  var impact  = (document.getElementById('s1impact') ? document.getElementById('s1impact').value : '').trim();
+
+  // 해결방안 요약 (너무 길면 축약)
+  var s1Short = sol1.length > 25 ? sol1.slice(0,25) + '…' : sol1 || '선정된 해결방안';
+  var s2Short = sol2.length > 20 ? sol2.slice(0,20) + '…' : sol2;
+  var rootShort = root.length > 20 ? root.slice(0,20) + '…' : root || '근본 원인';
+  var gapShort  = gap.length  > 20 ? gap.slice(0,20)  + '…' : gap  || '현재 문제';
+  var tobeShort = tobe.length > 20 ? tobe.slice(0,20) + '…' : tobe || '목표 상태';
+
+  // 이해관계자 1: 핵심 실행 주체 (페르소나)
+  var stk1 = {
+    dept: persona,
+    icon: '👤',
+    concern: '"' + s1Short + '" 실행에 따른 추가 업무 부담과 기존 방식 변경에 대한 저항',
+    logic: '"' + s1Short + '" 실행을 통해 "' + gapShort + '" 문제가 해소되면 '
+      + persona + '의 주요 KPI가 직접 개선됩니다. '
+      + (impact ? '기대 효과: ' + impact + '.' : '단계적 파일럿으로 부담을 최소화하면서 성과를 먼저 증명할 수 있습니다.')
+  };
+
+  // 이해관계자 2: 협업 부서
+  var stk2logic = '"' + s1Short + '" 실행 시 ' + collab + '의 역할 범위가 명확해지고, ';
+  if (s2Short) {
+    stk2logic += '"' + s2Short + '" 등 후속 방안과 연계하면 부서 간 중복 업무가 줄어듭니다.';
+  } else {
+    stk2logic += '공동 목표 달성 시 ' + collab + '의 성과로도 인정받을 수 있도록 R&R을 설계하면 협력을 끌어낼 수 있습니다.';
+  }
+  var stk2 = {
+    dept: collab,
+    icon: '🤝',
+    concern: '"' + s1Short + '" 과정에서 협업 범위와 책임이 불명확하여 업무 부담이 증가할 수 있다',
+    logic: stk2logic
+  };
+
+  // 이해관계자 3: 경영진/의사결정권자
+  var stk3logic = '"' + s1Short + '" 실행으로 "' + gapShort + '"에서 "' + tobeShort + '"으로 전환하면 ';
+  if (impact) {
+    stk3logic += impact + '. 단계적 파일럿으로 초기 투자 리스크를 낮추고 가시적 성과부터 증명합니다.';
+  } else {
+    stk3logic += '근본 원인("' + rootShort + '")이 해소되어 유사 문제 재발을 방지합니다. 소규모 파일럿 → 효과 검증 → 전사 확대 순서로 ROI를 단계적으로 증명합니다.';
+  }
+  var stk3 = {
+    dept: '경영진 · 의사결정권자',
+    icon: '🏢',
+    concern: '"' + s1Short + '" 도입 비용 대비 효과(ROI)가 불분명하고 실행 리스크가 있다',
+    logic: stk3logic
+  };
+
+  // 이해관계자 4: 현장 실무자 (솔루션에 직접 영향받는 구성원)
+  var stk4logic = '"' + rootShort + '" 문제가 해소되면 현장 실무자의 반복적인 오류·재작업이 줄어듭니다. ';
+  if (sol3) {
+    stk4logic += '"' + sol3.slice(0,20) + '…" 등 보완 방안을 병행하면 현장 수용성을 높일 수 있습니다.';
+  } else {
+    stk4logic += '"' + s1Short + '" 실행 전 현장 의견을 반영한 설계로 참여 동기를 높이는 것을 권장합니다.';
+  }
+  var stk4 = {
+    dept: '현장 실무자 · 팀원',
+    icon: '⚙️',
+    concern: '"' + s1Short + '" 도입으로 기존 업무 방식이 바뀌는 것에 대한 불안감과 적응 부담',
+    logic: stk4logic
+  };
+
+  return [stk1, stk2, stk3, stk4];
 }
 
 // ── Step 7: 프로세스 기반 제약 조건 생성 ─────────────────
@@ -2124,7 +2219,7 @@ function renderAIOutput(step) {
   }
 
   else if (step === 6) {
-    stakeholders = data?.stakeholders ? JSON.parse(JSON.stringify(data.stakeholders)) : [];
+    stakeholders = generateStakeholdersFromSolution();
     renderStk();
   }
 
@@ -2312,6 +2407,7 @@ function runWhy3AI(idx) {
     renderWhy3Chain(idx);
     out.style.display = ''; out.classList.add('show');
     btn.disabled = false; btn.innerHTML = '🔄 AI 재생성';
+    aiDone[3] = true;  // validate(3) 통과용
   }, 900 + Math.random()*600);
 }
 
@@ -3185,6 +3281,459 @@ function buildProposal() {
   html += '<div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px;">© 2026 GAM CONSULTING | Problem-Solving Master · ' + today + '</div>';
 
   document.getElementById('finalOut').innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+//  문서 생성: Word(세로형) + PPT(가로형)
+// ══════════════════════════════════════════════════════════
+
+function collectProposalData() {
+  var slogan   = (document.getElementById('s9slogan')?.value || '').trim() || '문제해결 기획서';
+  var catchPhr = (document.getElementById('s9catch')?.value  || '').trim();
+  var asis     = (document.getElementById('s1asis')?.value   || '').trim();
+  var tobe     = (document.getElementById('s1tobe')?.value   || '').trim();
+  var gap      = (document.getElementById('s1gap')?.value    || '').trim();
+  var persona  = (document.getElementById('s1persona')?.value|| '').trim() || '담당팀장';
+  var collab   = (document.getElementById('s1collab')?.value || '').trim();
+  var impact   = (document.getElementById('s1impact')?.value || '').trim();
+  var risk     = (document.getElementById('s1risk')?.value   || '').trim();
+  var priority = (document.getElementById('s1priority')?.value||'').trim();
+  var probDef  = stepOutputs[1] || gap;
+  var rootCause= stepOutputs[3] || (why3ChainData[0] ? (why3ChainData[0][4]||'') : '');
+  var solution = stepOutputs[4] || (document.getElementById('s4sol1')?.value||'').trim();
+  var today    = new Date().toLocaleDateString('ko-KR');
+
+  // 5Why 체인 (다중 체인 지원)
+  var whyChains = [];
+  for (var ci = 0; ci < Math.max(selectedKeyCauses.length, 1); ci++) {
+    var chain = [];
+    for (var wi = 0; wi < 5; wi++) {
+      var el = document.getElementById('why' + ci + '_' + wi);
+      var val = el ? el.value.trim() : (why3ChainData[ci] ? (why3ChainData[ci][wi]||'') : '');
+      if (val) chain.push(val);
+    }
+    if (chain.length) whyChains.push({ cause: selectedKeyCauses[ci] || '', chain: chain });
+  }
+
+  // 해결방안
+  var sols = [
+    (document.getElementById('s4sol1')?.value||'').trim(),
+    (document.getElementById('s4sol2')?.value||'').trim(),
+    (document.getElementById('s4sol3')?.value||'').trim()
+  ].filter(Boolean);
+
+  // 실행계획
+  var actions = [];
+  document.querySelectorAll('#actBody tr').forEach(function(r) {
+    var inputs = r.querySelectorAll('input');
+    var phaseEl = r.querySelector('.phase-tag');
+    var task = inputs[0] ? inputs[0].value.trim() : '';
+    if (!task) return;
+    actions.push({
+      phase: phaseEl ? phaseEl.textContent : '',
+      task:  task,
+      owner: inputs[1] ? inputs[1].value.trim() : '',
+      due:   inputs[2] ? inputs[2].value.trim() : '',
+      kpi:   inputs[3] ? inputs[3].value.trim() : ''
+    });
+  });
+
+  // 제약조건
+  var constraints = [];
+  document.querySelectorAll('#ctBody .ct-item').forEach(function(el) {
+    var typeEl = el.querySelector('strong');
+    var taEl   = el.querySelector('textarea');
+    if (typeEl && taEl && taEl.value.trim()) {
+      constraints.push({ type: typeEl.textContent, body: taEl.value.trim() });
+    }
+  });
+
+  // MECE 분류
+  var meceLines = [];
+  if (meceData && meceData.cats) {
+    meceData.cats.forEach(function(cat) {
+      var leaves = (meceData.leaves[cat]||[]).filter(function(l){ return l && !l.includes('세부 원인'); });
+      if (leaves.length) meceLines.push(cat + ': ' + leaves.join(', '));
+    });
+  }
+
+  // 키워드
+  var kwEls = document.querySelectorAll('.kw-tag.picked');
+  var keywords = Array.from(kwEls).map(function(k){return k.textContent;}).join(', ');
+
+  return { slogan, catchPhr, asis, tobe, gap, persona, collab, impact, risk, priority,
+           probDef, rootCause, solution, sols, whyChains, actions, constraints,
+           meceLines, keywords, today, stakeholders: stakeholders.slice() };
+}
+
+// ─────────────── Word 세로형 ───────────────
+function generateWordDoc() {
+  if (typeof docx === 'undefined') { alert('Word 라이브러리가 로드되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+  var d = collectProposalData();
+  var btn = document.getElementById('btnWordDoc');
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> 생성 중...';
+
+  try {
+    var D = docx;
+
+    function h1(text) {
+      return new D.Paragraph({
+        children: [new D.TextRun({ text: text, bold: true, size: 32, color: '1A6FCC', font: 'Malgun Gothic' })],
+        spacing: { before: 400, after: 160 },
+        border: { bottom: { color: '1A6FCC', space: 1, style: D.BorderStyle.SINGLE, size: 6 } }
+      });
+    }
+    function h2(text) {
+      return new D.Paragraph({
+        children: [new D.TextRun({ text: text, bold: true, size: 24, color: '1A1A2E', font: 'Malgun Gothic' })],
+        spacing: { before: 280, after: 100 }
+      });
+    }
+    function body(text) {
+      return new D.Paragraph({
+        children: [new D.TextRun({ text: text || '—', size: 20, color: '333333', font: 'Malgun Gothic' })],
+        spacing: { before: 60, after: 60 }
+      });
+    }
+    function kv(key, val) {
+      return new D.Paragraph({
+        children: [
+          new D.TextRun({ text: '▸ ' + key + '  ', bold: true, size: 20, color: '1A6FCC', font: 'Malgun Gothic' }),
+          new D.TextRun({ text: val || '—', size: 20, color: '333333', font: 'Malgun Gothic' })
+        ],
+        spacing: { before: 80, after: 80 }
+      });
+    }
+    function blank() { return new D.Paragraph({ children: [new D.TextRun('')], spacing: { before: 60, after: 60 } }); }
+    function ruled() {
+      return new D.Paragraph({
+        children: [new D.TextRun('')],
+        border: { bottom: { color: 'CCCCCC', space: 1, style: D.BorderStyle.SINGLE, size: 2 } },
+        spacing: { before: 120, after: 120 }
+      });
+    }
+
+    var children = [];
+
+    // ─ 표지 ─
+    children.push(blank(), blank());
+    children.push(new D.Paragraph({
+      children: [new D.TextRun({ text: d.slogan, bold: true, size: 56, color: '1A6FCC', font: 'Malgun Gothic' })],
+      alignment: D.AlignmentType.CENTER, spacing: { before: 600, after: 200 }
+    }));
+    if (d.catchPhr) children.push(new D.Paragraph({
+      children: [new D.TextRun({ text: d.catchPhr, size: 24, color: '555555', font: 'Malgun Gothic', italics: true })],
+      alignment: D.AlignmentType.CENTER, spacing: { before: 0, after: 400 }
+    }));
+    children.push(new D.Paragraph({
+      children: [new D.TextRun({ text: '담당: ' + d.persona + '  |  작성일: ' + d.today, size: 18, color: '888888', font: 'Malgun Gothic' })],
+      alignment: D.AlignmentType.CENTER, spacing: { before: 200, after: 800 }
+    }));
+    children.push(new D.Paragraph({ pageBreakBefore: true, children: [new D.TextRun('')] }));
+
+    // ─ 목차 ─
+    children.push(h1('목차'));
+    ['1. 목적 및 문제 정의', '2. 상황 분석 (MECE + 5Why)', '3. 방향 — 핵심 해결방안', '4. 이해관계자 설득 전략', '5. 실행 계획', '6. 제약 조건', '7. 기대효과 및 리스크'].forEach(function(t) {
+      children.push(body(t));
+    });
+    children.push(new D.Paragraph({ pageBreakBefore: true, children: [new D.TextRun('')] }));
+
+    // ─ 1. 목적 ─
+    children.push(h1('1. 목적 및 문제 정의'));
+    children.push(h2('1-1. 문제 정의'));
+    children.push(body(d.probDef));
+    children.push(h2('1-2. 현재 상황 vs 목표'));
+    children.push(kv('현재 상황', d.asis));
+    children.push(kv('문제 해결된 모습', d.tobe));
+    children.push(kv('GAP 서술', d.gap));
+    children.push(kv('우선순위 판단', d.priority));
+    children.push(ruled());
+
+    // ─ 2. 상황 분석 ─
+    children.push(h1('2. 상황 분석'));
+    if (d.meceLines.length) {
+      children.push(h2('2-1. 원인 분류 (MECE)'));
+      d.meceLines.forEach(function(l){ children.push(body(l)); });
+    }
+    if (d.whyChains.length) {
+      d.whyChains.forEach(function(wc, wi) {
+        children.push(h2('2-' + (wi+2) + '. 5Why 탐색' + (wc.cause ? ' — ' + wc.cause : '')));
+        var labels = ['현상', 'Why 1', 'Why 2', 'Why 3', '근본 원인'];
+        wc.chain.forEach(function(w, i){ children.push(kv(labels[i]||('Why '+i), w)); });
+      });
+    }
+    children.push(kv('도출된 근본 원인', d.rootCause));
+    children.push(ruled());
+
+    // ─ 3. 방향 ─
+    children.push(h1('3. 방향 — 핵심 해결방안'));
+    d.sols.forEach(function(s, i){ children.push(kv((i+1)+'순위', s)); });
+    children.push(ruled());
+
+    // ─ 4. 이해관계자 ─
+    children.push(h1('4. 이해관계자 설득 전략'));
+    d.stakeholders.forEach(function(s) {
+      children.push(h2(s.icon + ' ' + s.dept));
+      children.push(kv('우려 사항', s.concern));
+      children.push(kv('설득 논리', s.logic));
+    });
+    children.push(ruled());
+
+    // ─ 5. 실행 계획 ─
+    children.push(h1('5. 실행 계획'));
+    if (d.actions.length) {
+      d.actions.forEach(function(a) {
+        children.push(new D.Paragraph({
+          children: [
+            new D.TextRun({ text: '[' + (a.phase||'—') + '] ', bold: true, size: 20, color: '1A6FCC', font: 'Malgun Gothic' }),
+            new D.TextRun({ text: a.task, size: 20, color: '1A1A2E', font: 'Malgun Gothic' })
+          ],
+          spacing: { before: 80, after: 40 }
+        }));
+        children.push(body('담당: ' + (a.owner||'—') + '  |  기한: ' + (a.due||'—') + '  |  KPI: ' + (a.kpi||'—')));
+      });
+    } else {
+      children.push(body('실행 계획을 Step 8에서 입력해주세요.'));
+    }
+    children.push(ruled());
+
+    // ─ 6. 제약 조건 ─
+    children.push(h1('6. 제약 조건'));
+    d.constraints.forEach(function(c){ children.push(kv(c.type, c.body)); });
+    children.push(ruled());
+
+    // ─ 7. 기대효과 ─
+    children.push(h1('7. 기대효과 및 리스크'));
+    children.push(kv('기대효과', d.impact));
+    children.push(kv('방치 시 리스크', d.risk));
+    if (d.keywords) children.push(kv('핵심 키워드', d.keywords));
+
+    var doc = new D.Document({
+      sections: [{ properties: { page: { margin: { top: 720, bottom: 720, left: 900, right: 900 } } }, children: children }],
+      styles: { default: { document: { run: { font: 'Malgun Gothic', size: 20, color: '1A1A2E' } } } }
+    });
+
+    D.Packer.toBlob(doc).then(function(blob) {
+      var fname = (d.slogan.replace(/\s+/g,'_').slice(0,20) || '기획서') + '_세로형_' + d.today.replace(/\./g,'') + '.docx';
+      saveAs(blob, fname);
+      btn.disabled = false; btn.innerHTML = '<span style="font-size:18px;">📄</span><span><div style="font-size:14px;font-weight:700;">최종기획서 완성 — 세로형</div><div style="font-size:11px;opacity:.8;font-weight:400;">Word 문서 (.docx)</div></span>';
+    });
+  } catch(e) {
+    alert('Word 생성 오류: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '<span style="font-size:18px;">📄</span><span><div style="font-size:14px;font-weight:700;">최종기획서 완성 — 세로형</div><div style="font-size:11px;opacity:.8;font-weight:400;">Word 문서 (.docx)</div></span>';
+  }
+}
+
+// ─────────────── PPT 가로형 ───────────────
+function generatePptDoc() {
+  if (typeof PptxGenJS === 'undefined') { alert('PPT 라이브러리가 로드되지 않았습니다. 잠시 후 다시 시도하세요.'); return; }
+  var d = collectProposalData();
+  var btn = document.getElementById('btnPptDoc');
+  btn.disabled = true; btn.innerHTML = '<span>⏳</span> 생성 중...';
+
+  try {
+    var pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_WIDE';
+    pptx.author = d.persona;
+    pptx.title  = d.slogan;
+
+    var C = { bg: 'FFFFFF', bgSub: 'F0F4FF', blue: '1A6FCC', dark: '1A1A2E',
+              orange: 'E8703A', green: '0D7A5F', muted: '888888', light: 'EBF4FF', white: 'FFFFFF' };
+    var F = 'Malgun Gothic';
+    var W = 13.3, H = 7.5;
+
+    function addHeader(slide, title, sub) {
+      // 상단 파란 띠
+      slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: 0.8, fill: { color: C.blue } });
+      slide.addText(title, { x: 0.4, y: 0, w: W-0.8, h: 0.8, fontSize: 22, bold: true, color: C.white, fontFace: F, valign: 'middle' });
+      if (sub) slide.addText(sub, { x: 0.4, y: 0.78, w: W-0.8, h: 0.35, fontSize: 10, color: C.muted, fontFace: F });
+      // 하단 푸터
+      slide.addText('Problem-Solving Master · GAM Consulting · ' + d.today,
+        { x: 0.4, y: H-0.3, w: W-0.8, h: 0.25, fontSize: 8, color: C.muted, fontFace: F, align: 'right' });
+    }
+
+    function addAccent(slide) {
+      slide.addShape(pptx.ShapeType.rect, { x: 0, y: H-0.12, w: W, h: 0.12, fill: { color: C.orange } });
+    }
+
+    // ── Slide 1: 표지 ──
+    var sl1 = pptx.addSlide();
+    sl1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.light } });
+    sl1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 0.18, h: H, fill: { color: C.blue } });
+    sl1.addShape(pptx.ShapeType.rect, { x: 0.18, y: 0, w: W-0.18, h: H, fill: { color: C.light } });
+    sl1.addText(d.slogan, { x: 1.0, y: 1.6, w: 10, h: 1.6, fontSize: 34, bold: true, color: C.dark, fontFace: F, breakLine: false });
+    if (d.catchPhr) sl1.addText(d.catchPhr, { x: 1.0, y: 3.3, w: 9, h: 0.7, fontSize: 16, color: C.blue, fontFace: F, italic: true });
+    sl1.addShape(pptx.ShapeType.rect, { x: 1.0, y: 4.2, w: 5, h: 0.55, fill: { color: C.orange }, line: { type: 'none' } });
+    sl1.addText('문제해결 기획서', { x: 1.0, y: 4.2, w: 5, h: 0.55, fontSize: 14, bold: true, color: C.white, fontFace: F, valign: 'middle', align: 'center' });
+    sl1.addText('담당: ' + d.persona + '  |  ' + d.today, { x: 1.0, y: 5.1, w: 9, h: 0.4, fontSize: 12, color: C.muted, fontFace: F });
+    if (d.keywords) sl1.addText('키워드: ' + d.keywords, { x: 1.0, y: 5.55, w: 9, h: 0.35, fontSize: 10, color: C.muted, fontFace: F, italic: true });
+    sl1.addShape(pptx.ShapeType.rect, { x: 0, y: H-0.12, w: W, h: 0.12, fill: { color: C.orange } });
+
+    // ── Slide 2: Executive Summary ──
+    var sl2 = pptx.addSlide();
+    sl2.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl2, 'Executive Summary', '이 기획의 핵심을 한 페이지로 정리합니다');
+    var cells = [
+      { label: '📌 목적', val: d.probDef, color: 'EFF6FF' },
+      { label: '🎯 핵심 해결방안', val: d.solution, color: 'ECFDF5' },
+      { label: '💰 기대효과', val: d.impact, color: 'FFFBEB' },
+      { label: '⚠️ 방치 시 리스크', val: d.risk, color: 'FEF2F2' }
+    ];
+    cells.forEach(function(c, i) {
+      var col = i % 2, row = Math.floor(i / 2);
+      var x = 0.4 + col * 6.3, y = 1.2 + row * 2.6, bw = 6.0, bh = 2.3;
+      sl2.addShape(pptx.ShapeType.roundRect, { x: x, y: y, w: bw, h: bh, fill: { color: c.color }, line: { color: 'DDDDDD', width: 1 }, rectRadius: 0.1 });
+      sl2.addText(c.label, { x: x+0.15, y: y+0.12, w: bw-0.3, h: 0.38, fontSize: 10, bold: true, color: C.blue, fontFace: F });
+      sl2.addText(c.val || '—', { x: x+0.15, y: y+0.52, w: bw-0.3, h: bh-0.7, fontSize: 12, color: C.dark, fontFace: F, wrap: true, valign: 'top' });
+    });
+    addAccent(sl2);
+
+    // ── Slide 3: 문제 정의 ──
+    var sl3 = pptx.addSlide();
+    sl3.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl3, '1. 목적 및 문제 정의', '현재 상황 → 목표 상태 → GAP');
+    // 현재/목표/gap 박스
+    var boxY = 1.1;
+    sl3.addShape(pptx.ShapeType.rect, { x: 0.4, y: boxY, w: 3.6, h: 1.8, fill: { color: 'FEF2F2' }, line: { color: 'FCA5A5', width: 1 } });
+    sl3.addText('현재 상황', { x: 0.4, y: boxY+0.05, w: 3.6, h: 0.35, fontSize: 9, bold: true, color: 'DC2626', fontFace: F, align: 'center' });
+    sl3.addText(d.asis||'—', { x: 0.4, y: boxY+0.42, w: 3.6, h: 1.3, fontSize: 11, color: C.dark, fontFace: F, wrap: true, valign: 'top', align: 'center' });
+
+    sl3.addShape(pptx.ShapeType.rect, { x: 4.8, y: boxY+0.5, w: 0.6, h: 0.8, fill: { color: C.orange } });
+    sl3.addText('→', { x: 4.8, y: boxY+0.5, w: 0.6, h: 0.8, fontSize: 20, bold: true, color: C.white, fontFace: F, align: 'center', valign: 'middle' });
+
+    sl3.addShape(pptx.ShapeType.rect, { x: 5.6, y: boxY, w: 3.6, h: 1.8, fill: { color: 'ECFDF5' }, line: { color: '6EE7B7', width: 1 } });
+    sl3.addText('문제 해결된 모습', { x: 5.6, y: boxY+0.05, w: 3.6, h: 0.35, fontSize: 9, bold: true, color: '059669', fontFace: F, align: 'center' });
+    sl3.addText(d.tobe||'—', { x: 5.6, y: boxY+0.42, w: 3.6, h: 1.3, fontSize: 11, color: C.dark, fontFace: F, wrap: true, valign: 'top', align: 'center' });
+
+    sl3.addShape(pptx.ShapeType.rect, { x: 9.4, y: boxY, w: 3.5, h: 1.8, fill: { color: 'EFF6FF' }, line: { color: '93C5FD', width: 1 } });
+    sl3.addText('GAP', { x: 9.4, y: boxY+0.05, w: 3.5, h: 0.35, fontSize: 9, bold: true, color: C.blue, fontFace: F, align: 'center' });
+    sl3.addText(d.gap||'—', { x: 9.4, y: boxY+0.42, w: 3.5, h: 1.3, fontSize: 10, color: C.dark, fontFace: F, wrap: true, valign: 'top' });
+
+    sl3.addShape(pptx.ShapeType.rect, { x: 0.4, y: 3.15, w: 12.5, h: 1.4, fill: { color: 'FFFBEB' }, line: { color: 'FCD34D', width: 1 } });
+    sl3.addText('문제 정의', { x: 0.55, y: 3.2, w: 2.0, h: 0.35, fontSize: 9, bold: true, color: C.orange, fontFace: F });
+    sl3.addText(d.probDef||'—', { x: 0.55, y: 3.55, w: 12.2, h: 0.9, fontSize: 11, color: C.dark, fontFace: F, wrap: true });
+
+    sl3.addShape(pptx.ShapeType.rect, { x: 0.4, y: 4.7, w: 12.5, h: 1.3, fill: { color: 'F0FFF4' }, line: { color: '86EFAC', width: 1 } });
+    sl3.addText('우선순위 판단', { x: 0.55, y: 4.75, w: 2.5, h: 0.35, fontSize: 9, bold: true, color: '059669', fontFace: F });
+    sl3.addText(d.priority||'—', { x: 0.55, y: 5.1, w: 12.2, h: 0.8, fontSize: 11, color: C.dark, fontFace: F, wrap: true });
+    addAccent(sl3);
+
+    // ── Slide 4: 상황 분석 ──
+    var sl4 = pptx.addSlide();
+    sl4.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl4, '2. 상황 분석 — MECE & 5Why', '원인 분류 → 핵심원인 탐색 → 근본 원인 도출');
+    // MECE
+    var meceLabelY = 1.1;
+    sl4.addText('▸ MECE 원인 분류', { x: 0.4, y: meceLabelY, w: 6, h: 0.35, fontSize: 11, bold: true, color: C.blue, fontFace: F });
+    d.meceLines.slice(0,4).forEach(function(l, i) {
+      sl4.addShape(pptx.ShapeType.rect, { x: 0.4, y: meceLabelY+0.42+i*0.65, w: 5.6, h: 0.55, fill: { color: i%2===0?'F0F4FF':'FFFFFF' }, line: { color: 'DDDDDD', width: 0.5 } });
+      sl4.addText(l, { x: 0.55, y: meceLabelY+0.42+i*0.65, w: 5.4, h: 0.55, fontSize: 10, color: C.dark, fontFace: F, valign: 'middle' });
+    });
+    // 5Why
+    var whyLabelX = 7.0;
+    sl4.addText('▸ 5Why 탐색', { x: whyLabelX, y: meceLabelY, w: 5.8, h: 0.35, fontSize: 11, bold: true, color: C.blue, fontFace: F });
+    if (d.whyChains.length) {
+      var wc = d.whyChains[0];
+      var labels5 = ['현상','Why 1','Why 2','Why 3','근본원인'];
+      wc.chain.slice(0,5).forEach(function(w, i) {
+        var isRoot = i===4;
+        sl4.addShape(pptx.ShapeType.rect, { x: whyLabelX, y: meceLabelY+0.42+i*1.0, w: 5.8, h: 0.85, fill: { color: isRoot?'ECFDF5':'F8FAFF' }, line: { color: isRoot?'6EE7B7':'93C5FD', width: isRoot?1.5:0.5 } });
+        sl4.addText(labels5[i], { x: whyLabelX+0.1, y: meceLabelY+0.44+i*1.0, w: 1.0, h: 0.3, fontSize: 8, bold: true, color: isRoot?'059669':C.blue, fontFace: F });
+        sl4.addText(w.slice(0,55)+(w.length>55?'…':''), { x: whyLabelX+0.1, y: meceLabelY+0.74+i*1.0, w: 5.6, h: 0.48, fontSize: 9, color: C.dark, fontFace: F, wrap: true });
+      });
+    }
+    addAccent(sl4);
+
+    // ── Slide 5: 핵심 해결방안 ──
+    var sl5 = pptx.addSlide();
+    sl5.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl5, '3. 핵심 해결방안', '근본 원인 해소를 위한 실행 방향');
+    sl5.addShape(pptx.ShapeType.rect, { x: 0.4, y: 1.1, w: 12.5, h: 0.85, fill: { color: 'ECFDF5' }, line: { color: '6EE7B7', width: 1.5 } });
+    sl5.addText('근본 원인', { x: 0.55, y: 1.12, w: 2.0, h: 0.32, fontSize: 9, bold: true, color: '059669', fontFace: F });
+    sl5.addText(d.rootCause||'—', { x: 0.55, y: 1.44, w: 12.2, h: 0.45, fontSize: 11, color: C.dark, fontFace: F, wrap: true });
+    var solColors = [['EFF6FF','1A6FCC'],['FFFBEB','D97706'],['F5F3FF','7C3AED']];
+    d.sols.forEach(function(s, i) {
+      var bg = solColors[i][0], tc = solColors[i][1];
+      var y = 2.15 + i * 1.5;
+      sl5.addShape(pptx.ShapeType.roundRect, { x: 0.4, y: y, w: 12.5, h: 1.3, fill: { color: bg }, line: { color: 'DDDDDD', width: 1 }, rectRadius: 0.08 });
+      sl5.addShape(pptx.ShapeType.rect, { x: 0.4, y: y, w: 0.5, h: 1.3, fill: { color: tc } });
+      sl5.addText((i+1)+'순위', { x: 0.4, y: y, w: 0.5, h: 1.3, fontSize: 8, bold: true, color: C.white, fontFace: F, align: 'center', valign: 'middle', rotate: 270 });
+      sl5.addText(s, { x: 1.05, y: y+0.15, w: 11.6, h: 1.0, fontSize: 13, color: C.dark, fontFace: F, bold: i===0, wrap: true, valign: 'middle' });
+    });
+    addAccent(sl5);
+
+    // ── Slide 6: 이해관계자 ──
+    var sl6 = pptx.addSlide();
+    sl6.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl6, '4. 이해관계자 설득 전략', '핵심 실행 주체별 우려 사항 및 설득 논리');
+    d.stakeholders.slice(0,4).forEach(function(s, i) {
+      var col = i % 2, row = Math.floor(i/2);
+      var x = 0.4 + col*6.45, y = 1.15 + row*2.85, bw = 6.15, bh = 2.65;
+      sl6.addShape(pptx.ShapeType.roundRect, { x: x, y: y, w: bw, h: bh, fill: { color: 'F9FAFB' }, line: { color: 'E5E7EB', width: 1 }, rectRadius: 0.08 });
+      sl6.addText(s.icon+' '+s.dept, { x: x+0.12, y: y+0.1, w: bw-0.24, h: 0.4, fontSize: 11, bold: true, color: C.blue, fontFace: F });
+      sl6.addShape(pptx.ShapeType.rect, { x: x+0.12, y: y+0.54, w: bw-0.24, h: 0.02, fill: { color: 'E5E7EB' } });
+      sl6.addText('우려: '+s.concern, { x: x+0.12, y: y+0.6, w: bw-0.24, h: 0.8, fontSize: 9, color: '888888', fontFace: F, italic: true, wrap: true });
+      sl6.addText('설득: '+s.logic, { x: x+0.12, y: y+1.42, w: bw-0.24, h: 1.1, fontSize: 10, color: C.dark, fontFace: F, wrap: true, bold: false });
+    });
+    addAccent(sl6);
+
+    // ── Slide 7: 실행 계획 ──
+    var sl7 = pptx.addSlide();
+    sl7.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl7, '5. 실행 계획', '단기 / 중기 / 장기 단계별 실행 과제');
+    if (d.actions.length) {
+      var tableRows = [[
+        { text: '단계', options: { bold: true, color: C.white, fill: C.blue, align: 'center', fontFace: F, fontSize: 10 } },
+        { text: '과제', options: { bold: true, color: C.white, fill: C.blue, fontFace: F, fontSize: 10 } },
+        { text: '담당', options: { bold: true, color: C.white, fill: C.blue, align: 'center', fontFace: F, fontSize: 10 } },
+        { text: '기한', options: { bold: true, color: C.white, fill: C.blue, align: 'center', fontFace: F, fontSize: 10 } },
+        { text: 'KPI', options: { bold: true, color: C.white, fill: C.blue, fontFace: F, fontSize: 10 } }
+      ]];
+      d.actions.slice(0,8).forEach(function(a, i) {
+        var fillColor = i%2===0 ? 'F8FAFF' : 'FFFFFF';
+        tableRows.push([
+          { text: a.phase||'—', options: { align: 'center', fontSize: 9, fontFace: F, fill: fillColor } },
+          { text: a.task, options: { fontSize: 10, fontFace: F, fill: fillColor, bold: true } },
+          { text: a.owner||'—', options: { align: 'center', fontSize: 9, fontFace: F, fill: fillColor } },
+          { text: a.due||'—', options: { align: 'center', fontSize: 9, fontFace: F, fill: fillColor } },
+          { text: a.kpi||'—', options: { fontSize: 9, fontFace: F, fill: fillColor } }
+        ]);
+      });
+      sl7.addTable(tableRows, { x: 0.4, y: 1.05, w: 12.5, colW: [1.0,4.5,1.8,1.2,4.0], border: { color: 'E5E7EB', pt: 0.5 }, rowH: 0.52 });
+    } else {
+      sl7.addText('실행 계획이 입력되지 않았습니다.', { x: 0.4, y: 2, w: 12, h: 1, fontSize: 14, color: C.muted, fontFace: F, align: 'center' });
+    }
+    addAccent(sl7);
+
+    // ── Slide 8: 기대효과 + 제약조건 ──
+    var sl8 = pptx.addSlide();
+    sl8.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: H, fill: { color: C.white } });
+    addHeader(sl8, '6. 기대효과 & 제약 조건', '실행 이후 예측 효과 및 리스크 관리');
+    sl8.addText('기대효과', { x: 0.4, y: 1.1, w: 6, h: 0.38, fontSize: 12, bold: true, color: '059669', fontFace: F });
+    sl8.addShape(pptx.ShapeType.rect, { x: 0.4, y: 1.52, w: 6, h: 2.3, fill: { color: 'ECFDF5' }, line: { color: '6EE7B7', width: 1 } });
+    sl8.addText(d.impact||'—', { x: 0.55, y: 1.6, w: 5.7, h: 2.1, fontSize: 12, color: C.dark, fontFace: F, wrap: true, valign: 'top' });
+
+    sl8.addText('방치 시 리스크', { x: 7.0, y: 1.1, w: 5.9, h: 0.38, fontSize: 12, bold: true, color: 'DC2626', fontFace: F });
+    sl8.addShape(pptx.ShapeType.rect, { x: 7.0, y: 1.52, w: 5.9, h: 2.3, fill: { color: 'FEF2F2' }, line: { color: 'FCA5A5', width: 1 } });
+    sl8.addText(d.risk||'—', { x: 7.15, y: 1.6, w: 5.6, h: 2.1, fontSize: 12, color: C.dark, fontFace: F, wrap: true, valign: 'top' });
+
+    sl8.addText('제약 조건', { x: 0.4, y: 4.0, w: 12.5, h: 0.38, fontSize: 12, bold: true, color: C.blue, fontFace: F });
+    d.constraints.slice(0,4).forEach(function(c, i) {
+      var x = 0.4 + (i%2)*6.45, y = 4.45 + Math.floor(i/2)*1.05;
+      sl8.addShape(pptx.ShapeType.rect, { x: x, y: y, w: 6.15, h: 0.88, fill: { color: 'F8FAFF' }, line: { color: 'DDDDDD', width: 0.5 } });
+      sl8.addText(c.type+': ', { x: x+0.1, y: y+0.06, w: 1.5, h: 0.35, fontSize: 9, bold: true, color: C.blue, fontFace: F });
+      sl8.addText(c.body.slice(0,60)+(c.body.length>60?'…':''), { x: x+0.1, y: y+0.41, w: 5.9, h: 0.42, fontSize: 9, color: C.dark, fontFace: F, wrap: true });
+    });
+    addAccent(sl8);
+
+    var fname = (d.slogan.replace(/\s+/g,'_').slice(0,20)||'기획서') + '_가로형_' + d.today.replace(/\./g,'') + '.pptx';
+    pptx.writeFile({ fileName: fname }).then(function() {
+      btn.disabled = false; btn.innerHTML = '<span style="font-size:18px;">📊</span><span><div style="font-size:14px;font-weight:700;">최종기획서 완성 — 가로형</div><div style="font-size:11px;opacity:.8;font-weight:400;">PowerPoint (.pptx)</div></span>';
+    });
+  } catch(e) {
+    alert('PPT 생성 오류: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '<span style="font-size:18px;">📊</span><span><div style="font-size:14px;font-weight:700;">최종기획서 완성 — 가로형</div><div style="font-size:11px;opacity:.8;font-weight:400;">PowerPoint (.pptx)</div></span>';
+  }
 }
 
 function copyProposal() {
