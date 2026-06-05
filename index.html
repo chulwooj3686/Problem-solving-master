@@ -129,6 +129,27 @@ select option{background:var(--bg2);}
 .mece-frame-cats{font-size:11px;color:var(--muted);line-height:1.5;}
 .mece-frame-use{font-size:10px;color:var(--teal);margin-top:4px;}
 
+/* ─── 선택된 핵심원인 태그 ─── */
+.sel-cause-tag {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(16,185,129,.15); border:1px solid rgba(16,185,129,.4);
+  color:var(--green); border-radius:20px; padding:4px 10px;
+  font-size:12px; font-weight:600;
+}
+.sel-cause-tag button {
+  background:none; border:none; color:var(--green); cursor:pointer;
+  font-size:13px; line-height:1; padding:0; opacity:.7;
+}
+.sel-cause-tag button:hover { opacity:1; }
+.why3-tab-btn {
+  padding:7px 14px; border-radius:8px; font-family:inherit;
+  font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border);
+  background:var(--glass2); color:var(--muted); transition:all .18s;
+}
+.why3-tab-btn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.why3-panel { display:none; }
+.why3-panel.active { display:block; animation:fadeUp .3s ease; }
+
 /* ─── 핵심원인 선택 박스 ─── */
 .key-cause-box{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:16px 18px;}
 .key-cause-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;}
@@ -1176,13 +1197,15 @@ const DEMO_MODE       = false;  // Firebase 연결됨
       <div class="key-cause-box" style="margin-top:20px;">
         <div class="key-cause-label">
           <span style="font-size:16px;">🎯</span>
-          <span>핵심원인 선택 <span style="font-size:11px;color:var(--muted);font-weight:400;">— 위 분류 중 5Why로 깊이 파고들 원인을 하나 선택하세요</span></span>
+          <span>핵심원인 선택 <span style="font-size:11px;color:var(--muted);font-weight:400;">— 최대 3개 선택 가능. 각 원인마다 5Why를 탐색합니다</span></span>
         </div>
         <div id="keyCauseChips" class="key-cause-chips"></div>
+        <div id="selectedCauseList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;min-height:28px;"></div>
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
-          <input type="text" id="s2keyInput" placeholder="직접 입력 또는 위 항목 클릭으로 선택"
+          <input type="text" id="s2keyInput" placeholder="직접 입력 또는 위 항목 클릭으로 추가"
             style="flex:1;"
-            oninput="document.querySelectorAll('.kc-chip').forEach(function(c){c.classList.remove('sel');})">
+            onkeydown="if(event.key==='Enter'){addKeyCauseFromInput();event.preventDefault();}">
+          <button class="btn btn-sec btn-sm" onclick="addKeyCauseFromInput()" style="white-space:nowrap;">+ 추가</button>
           <button class="btn btn-primary btn-sm" onclick="goToWhyWithCause()" style="white-space:nowrap;flex-shrink:0;">
             5Why 탐색 →
           </button>
@@ -1201,31 +1224,16 @@ const DEMO_MODE       = false;  // Firebase 연결됨
 <div class="step-card" id="s3">
   <div class="step-badge">STEP 03</div>
   <div class="step-title">핵심 원인 도출 (5 Why)</div>
-  <div class="step-sub">분석할 현상을 입력하면 AI가 "왜?"를 5번 연속으로 추적하여 숨은 근본 원인을 도출합니다. 각 단계는 직접 수정할 수 있습니다.</div>
+  <div class="step-sub">선택한 핵심원인별로 "왜?"를 5번 추적합니다. 탭으로 원인을 전환하세요.</div>
 
-  <div class="input-zone">
-    <div class="input-zone-title">① 분석할 현상 입력</div>
-    <div class="form-row">
-      <label>MECE 분석에서 핵심으로 판단한 원인 또는 현상을 입력하세요</label>
-      <textarea id="s3focus" placeholder="예: 온보딩 프로그램이 미흡하다 / 발주량이 실제 판매량보다 과다하다"></textarea>
-    </div>
-  </div>
+  <!-- 탭 (핵심원인별) -->
+  <div id="why3Tabs" style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;"></div>
 
-  <button class="ai-btn" id="ai3btn" onclick="runAI(3)">
-    <span class="spark">✨</span> AI 5Why 탐색 생성
-  </button>
+  <!-- 탭별 콘텐츠 컨테이너 -->
+  <div id="why3Panels"></div>
 
-  <div class="ai-loading" id="ai3load">
-    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="loading-txt">맥락을 추적하며 근본 원인을 찾는 중...</div>
-  </div>
-
-  <div class="ai-out" id="ai3out">
-    <div class="ai-out-hdr"><div class="ai-chip">🤖 AI 5Why 탐색 결과</div></div>
-    <div class="ai-out-body">
-      <div id="whyChain"></div>
-    </div>
-  </div>
+  <!-- hidden: 단일 cause 호환용 -->
+  <input type="hidden" id="s3focus" value="">
 
   <div class="nav-bar">
     <button class="btn btn-sec" onclick="goPrev(3)">← 이전</button>
@@ -2083,89 +2091,9 @@ function renderAIOutput(step) {
   }
 
   else if (step === 3) {
-    var focusVal = (document.getElementById('s3focus') ? document.getElementById('s3focus').value : '').trim();
-
-    // 체인 구성
-    var chain;
-    if (data && data.why && data.why.length >= 5) {
-      chain = data.why.slice(0, 5);
-      if (focusVal) chain[0] = focusVal;
-    } else {
-      var start = focusVal || '분석할 현상을 입력하세요';
-      chain = [
-        start,
-        '직접 입력: 왜 그런 현상이 발생했는가?',
-        '직접 입력: 왜 그 원인이 생겼는가?',
-        '직접 입력: 왜 그 상황이 지속되었는가?',
-        '직접 입력: 근본적으로 왜 이 문제가 해결되지 않았는가?'
-      ];
-    }
-
-    // 각 단계의 "왜?" 질문 생성
-    var whyQuestions = [
-      '왜 이런 현상이 발생했는가?',
-      '왜 그런가?',
-      '왜 그런가?',
-      '왜 그런가?',
-      '← 근본 원인'
-    ];
-
-    var container = document.getElementById('whyChain');
-    container.innerHTML = '';
-
-    var wrap = document.createElement('div');
-    wrap.className = 'why-chain-wrap';
-
-    chain.forEach(function(item, i) {
-      var isStart = i === 0;
-      var isRoot  = i === 4;
-
-      // 박스
-      var node = document.createElement('div');
-      node.className = 'why-node';
-
-      var box = document.createElement('div');
-      box.className = 'why-box' + (isStart ? ' start-box' : isRoot ? ' root-box' : '');
-
-      var lbl = document.createElement('div');
-      lbl.className = 'why-box-label';
-      lbl.textContent = isStart ? '▶ 현상 (시작점)' : isRoot ? '🎯 근본 원인 (Root Cause)' : 'Why ' + i + ' — 원인';
-
-      var ta = document.createElement('textarea');
-      ta.id = 'why' + i;
-      ta.value = item;
-      ta.placeholder = isRoot ? '가장 근본적인 원인을 확정하세요.' : '이 단계의 원인을 작성하세요.';
-
-      box.appendChild(lbl);
-      box.appendChild(ta);
-      node.appendChild(box);
-      wrap.appendChild(node);
-
-      // 마지막 항목 아래에는 커넥터 없음
-      if (!isRoot) {
-        var connector = document.createElement('div');
-        connector.className = 'why-connector';
-
-        var arrow = document.createElement('div');
-        arrow.className = 'why-arrow';
-        arrow.innerHTML = '<div class="why-arrow-line"></div><div class="why-arrow-head"></div>';
-
-        var bubble = document.createElement('span');
-        bubble.className = 'why-label-bubble';
-        bubble.textContent = 'Why?';
-
-        var question = document.createElement('span');
-        question.className = 'why-question';
-        question.textContent = whyQuestions[i];
-
-        connector.appendChild(arrow);
-        connector.appendChild(bubble);
-        connector.appendChild(question);
-        wrap.appendChild(connector);
-      }
-    });
-
-    container.appendChild(wrap);
+    // 탭 기반 다중 5Why — buildWhy3Tabs()가 이미 goToWhyWithCause()에서 호출됨
+    // AI 재생성 버튼(runAI(3)) 클릭 시: 현재 활성 탭만 재생성
+    runWhy3AI(why3ActiveTab);
   }
 
   else if (step === 4) {
@@ -2238,47 +2166,208 @@ function renderAIOutput(step) {
 }
 
 // ── 핵심원인 칩 목록 갱신 (renderMece 호출 후 실행) ──
+// 선택된 핵심원인 목록 (최대 3개)
+var selectedKeyCauses = [];
+var why3ChainData = {};
+var why3ActiveTab = 0;
+
 function refreshKeyCauseChips() {
   var chipWrap = document.getElementById('keyCauseChips');
   if (!chipWrap) return;
   chipWrap.innerHTML = '';
-  // meceData의 모든 leaves를 flat하게 chip으로 표시
   meceData.cats.forEach(function(cat) {
     var leaves = meceData.leaves[cat] || [];
     leaves.forEach(function(leaf) {
-      if (!leaf || leaf.indexOf('세부 원인 입력') === 0) return;
+      if (!leaf || leaf.indexOf('세부 원인 입력') === 0 || leaf.indexOf('새 원인 항목') === 0) return;
       var chip = document.createElement('div');
-      chip.className = 'kc-chip';
+      chip.className = 'kc-chip' + (selectedKeyCauses.indexOf(leaf) >= 0 ? ' sel' : '');
       chip.textContent = leaf;
-      chip.onclick = function() {
-        document.querySelectorAll('.kc-chip').forEach(function(c) { c.classList.remove('sel'); });
-        chip.classList.add('sel');
-        var inp = document.getElementById('s2keyInput');
-        if (inp) inp.value = leaf;
-      };
+      chip.onclick = (function(l){ return function(){ toggleKeyCause(l); }; })(leaf);
       chipWrap.appendChild(chip);
     });
   });
+  renderSelectedCauseList();
+}
+
+function toggleKeyCause(cause) {
+  var idx = selectedKeyCauses.indexOf(cause);
+  if (idx >= 0) {
+    selectedKeyCauses.splice(idx, 1);
+  } else {
+    if (selectedKeyCauses.length >= 3) { alert('핵심원인은 최대 3개까지 선택할 수 있습니다.'); return; }
+    selectedKeyCauses.push(cause);
+  }
+  refreshKeyCauseChips();
+}
+
+function addKeyCauseFromInput() {
+  var inp = document.getElementById('s2keyInput');
+  var val = inp ? inp.value.trim() : '';
+  if (!val) return;
+  if (selectedKeyCauses.indexOf(val) < 0) {
+    if (selectedKeyCauses.length >= 3) { alert('핵심원인은 최대 3개까지 선택할 수 있습니다.'); return; }
+    selectedKeyCauses.push(val);
+  }
+  if (inp) inp.value = '';
+  refreshKeyCauseChips();
+}
+
+function renderSelectedCauseList() {
+  var wrap = document.getElementById('selectedCauseList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  if (!selectedKeyCauses.length) {
+    wrap.innerHTML = '<span style="font-size:12px;color:var(--muted);">아직 선택된 원인이 없습니다</span>';
+    return;
+  }
+  selectedKeyCauses.forEach(function(cause, i) {
+    var tag = document.createElement('span');
+    tag.className = 'sel-cause-tag';
+    var span = document.createElement('span');
+    span.textContent = (i+1) + '. ' + cause;
+    var btn = document.createElement('button');
+    btn.textContent = '✕';
+    btn.onclick = (function(idx){ return function(){ removeSelectedCause(idx); }; })(i);
+    tag.appendChild(span); tag.appendChild(btn);
+    wrap.appendChild(tag);
+  });
+}
+
+function removeSelectedCause(idx) {
+  selectedKeyCauses.splice(idx, 1);
+  refreshKeyCauseChips();
 }
 
 // ── 핵심원인 → Step 3 이동 ──
 function goToWhyWithCause() {
   var inp = document.getElementById('s2keyInput');
-  var cause = inp ? inp.value.trim() : '';
-  if (!cause) {
-    alert('5Why로 분석할 핵심원인을 선택하거나 직접 입력해주세요.');
-    return;
-  }
-  // Step 3 s3focus에 핵심원인 주입
-  var focusEl = document.getElementById('s3focus');
-  if (focusEl) focusEl.value = cause;
-  // Step 2 출력 저장 후 Step 3으로 이동
+  var val = inp ? inp.value.trim() : '';
+  if (!selectedKeyCauses.length && val) { addKeyCauseFromInput(); }
+  if (!selectedKeyCauses.length) { alert('5Why로 분석할 핵심원인을 선택하거나 직접 입력해주세요.'); return; }
   if (!aiDone[2]) aiDone[2] = true;
   collectOutput(2);
   showToast(2);
   goTo(3);
-  // Step 3 AI 자동 실행
-  setTimeout(function() { runAI(3); }, 200);
+  buildWhy3Tabs();
+}
+
+// ── Step 3 탭 구성 ──
+function buildWhy3Tabs() {
+  var tabBar = document.getElementById('why3Tabs');
+  var panels = document.getElementById('why3Panels');
+  if (!tabBar || !panels) return;
+  tabBar.innerHTML = '';
+  panels.innerHTML = '';
+  var causes = selectedKeyCauses.length ? selectedKeyCauses : ['핵심원인을 입력하세요'];
+
+  causes.forEach(function(cause, i) {
+    var btn = document.createElement('button');
+    btn.className = 'why3-tab-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = (i+1) + '. ' + (cause.length > 18 ? cause.slice(0,18)+'…' : cause);
+    btn.onclick = (function(idx){ return function(){ switchWhy3Tab(idx); }; })(i);
+    tabBar.appendChild(btn);
+
+    var panel = document.createElement('div');
+    panel.className = 'why3-panel' + (i === 0 ? ' active' : '');
+    panel.id = 'why3panel-' + i;
+    panel.innerHTML =
+      '<div class="input-zone" style="margin-bottom:12px;">' +
+        '<div class="input-zone-title">분석할 현상</div>' +
+        '<textarea id="s3focus-' + i + '" style="min-height:60px;">' + cause + '</textarea>' +
+      '</div>' +
+      '<button class="ai-btn" id="ai3btn-' + i + '">' +
+        '<span class="spark">✨</span> AI 5Why 탐색 생성' +
+      '</button>' +
+      '<div class="ai-loading" id="ai3load-' + i + '">' +
+        '<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>' +
+        '<div class="loading-txt">근본 원인을 추적하는 중...</div>' +
+      '</div>' +
+      '<div class="ai-out" id="ai3out-' + i + '">' +
+        '<div class="ai-out-hdr"><div class="ai-chip">🤖 AI 5Why — ' + (i+1) + '번 원인</div></div>' +
+        '<div class="ai-out-body"><div id="whyChain-' + i + '"></div></div>' +
+      '</div>';
+    panel.querySelector('[id^="ai3btn-"]').onclick = (function(idx){ return function(){ runWhy3AI(idx); }; })(i);
+    panels.appendChild(panel);
+  });
+
+  setTimeout(function() { runWhy3AI(0); }, 200);
+}
+
+function switchWhy3Tab(idx) {
+  why3ActiveTab = idx;
+  document.querySelectorAll('.why3-tab-btn').forEach(function(b,i){ b.classList.toggle('active', i===idx); });
+  document.querySelectorAll('.why3-panel').forEach(function(p,i){ p.classList.toggle('active', i===idx); });
+}
+
+function runWhy3AI(idx) {
+  var btn  = document.getElementById('ai3btn-' + idx);
+  var load = document.getElementById('ai3load-' + idx);
+  var out  = document.getElementById('ai3out-' + idx);
+  if (!btn || !load || !out) return;
+  btn.disabled = true;
+  load.classList.add('show');
+  out.classList.remove('show'); out.style.display = 'none';
+  setTimeout(function() {
+    load.classList.remove('show');
+    renderWhy3Chain(idx);
+    out.style.display = ''; out.classList.add('show');
+    btn.disabled = false; btn.innerHTML = '🔄 AI 재생성';
+  }, 900 + Math.random()*600);
+}
+
+function renderWhy3Chain(idx) {
+  var focusEl  = document.getElementById('s3focus-' + idx);
+  var focusVal = focusEl ? focusEl.value.trim() : '';
+  var container = document.getElementById('whyChain-' + idx);
+  if (!container) return;
+
+  var chain;
+  if (why3ChainData[idx] && why3ChainData[idx].length === 5) {
+    chain = why3ChainData[idx].slice();
+  } else {
+    var data = (sc && sc.id !== 'CUSTOM' && sc.ai) ? sc.ai : generateCustomAI();
+    if (data && data.why && data.why.length >= 5) {
+      chain = data.why.slice(0,5);
+      if (focusVal) chain[0] = focusVal;
+    } else {
+      chain = [
+        focusVal || '분석할 현상을 입력하세요',
+        '직접 입력: 왜 그런 현상이 발생했는가?',
+        '직접 입력: 왜 그 원인이 생겼는가?',
+        '직접 입력: 왜 그 상황이 지속되었는가?',
+        '직접 입력: 근본적으로 왜 이 문제가 해결되지 않았는가?'
+      ];
+    }
+  }
+  why3ChainData[idx] = chain.slice();
+
+  container.innerHTML = '';
+  var wrap = document.createElement('div'); wrap.className = 'why-chain-wrap';
+  var whyQs = ['왜 이런 현상이 발생했는가?','왜 그런가?','왜 그런가?','왜 그런가?','← 근본 원인'];
+
+  chain.forEach(function(item, i) {
+    var isStart = i===0, isRoot = i===4;
+    var node = document.createElement('div'); node.className = 'why-node';
+    var box  = document.createElement('div');
+    box.className = 'why-box' + (isStart?' start-box':isRoot?' root-box':'');
+    var lbl = document.createElement('div'); lbl.className = 'why-box-label';
+    lbl.textContent = isStart ? '▶ 현상 (시작점)' : isRoot ? '🎯 근본 원인 (Root Cause)' : 'Why ' + i + ' — 원인';
+    var ta = document.createElement('textarea');
+    ta.id = 'why' + idx + '_' + i; ta.value = item;
+    ta.placeholder = isRoot ? '가장 근본적인 원인을 확정하세요.' : '이 단계의 원인을 작성하세요.';
+    ta.oninput = (function(ci, si){ return function(){ why3ChainData[ci][si] = this.value; }; })(idx, i);
+    box.appendChild(lbl); box.appendChild(ta); node.appendChild(box); wrap.appendChild(node);
+    if (!isRoot) {
+      var conn = document.createElement('div'); conn.className = 'why-connector';
+      var arr  = document.createElement('div'); arr.className = 'why-arrow';
+      arr.innerHTML = '<div class="why-arrow-line"></div><div class="why-arrow-head"></div>';
+      var bub = document.createElement('span'); bub.className = 'why-label-bubble'; bub.textContent = 'Why?';
+      var q   = document.createElement('span'); q.className = 'why-question'; q.textContent = whyQs[i];
+      conn.appendChild(arr); conn.appendChild(bub); conn.appendChild(q);
+      wrap.appendChild(conn);
+    }
+  });
+  container.appendChild(wrap);
 }
 
 // ── MECE 편집 ──
@@ -2351,6 +2440,7 @@ function renderMece() {
         leafInput.onchange = function() {
           updateLeaf(parseInt(this.getAttribute('data-ci')), parseInt(this.getAttribute('data-li')), this.value);
         };
+        leafInput.oninput = leafInput.onchange;
 
         var leafDel = document.createElement('button');
         leafDel.className = 'mece-del-btn';
@@ -2420,6 +2510,7 @@ function addCat() {
 function updateLeaf(ci, li, val) {
   const cat = meceData.cats[ci];
   if (meceData.leaves[cat]) meceData.leaves[cat][li] = val;
+  refreshKeyCauseChips();
 }
 function deleteLeaf(ci, li) {
   const cat = meceData.cats[ci];
@@ -2755,9 +2846,14 @@ function collectOutput(step) {
       return lines.join(' / ') + (extra ? ' / 추가: ' + extra : '');
     },
     3: () => {
-      // why4 textarea가 있으면 그 값을, 없으면 s3root 값 사용
-      var w4 = document.getElementById('why4');
-      return (w4 && w4.value.trim()) ? w4.value.trim() : (document.getElementById('s3root') ? document.getElementById('s3root').value : '');
+      // 다중 체인: 활성 탭의 근본원인(why_idx_4) 수집, 없으면 첫 번째 체인 사용
+      var roots = [];
+      for (var ci = 0; ci < selectedKeyCauses.length; ci++) {
+        var el = document.getElementById('why' + ci + '_4');
+        if (el && el.value.trim()) roots.push(el.value.trim());
+        else if (why3ChainData[ci] && why3ChainData[ci][4]) roots.push(why3ChainData[ci][4]);
+      }
+      return roots.length ? roots[0] : '';
     },
     4: () => {
       var s1 = document.getElementById('s4sol1') ? document.getElementById('s4sol1').value.trim() : '';
@@ -3252,12 +3348,20 @@ function collectAllData() {
     if (el) data.fields[id] = el.value || '';
   });
   data.meceData = meceData;
-  var why = [];
-  for (var i = 0; i < 5; i++) {
-    var w = document.getElementById('why' + i);
-    why.push(w ? w.value : '');
+  data.selectedKeyCauses = selectedKeyCauses.slice();
+  // 다중 5Why 체인 저장
+  var whyChains = {};
+  for (var ci = 0; ci < selectedKeyCauses.length; ci++) {
+    var chain = [];
+    for (var wi = 0; wi < 5; wi++) {
+      var el = document.getElementById('why' + ci + '_' + wi);
+      chain.push(el ? el.value : (why3ChainData[ci] ? (why3ChainData[ci][wi] || '') : ''));
+    }
+    whyChains[ci] = chain;
   }
-  data.whyChain = why;
+  data.whyChains = whyChains;
+  // 하위 호환: 첫 번째 체인을 whyChain으로도 저장
+  data.whyChain = whyChains[0] || [];
   return data;
 }
 
@@ -3301,6 +3405,16 @@ function applyGroupData(data) {
   meceData = data.meceData || { cats: [], leaves: {} };
   if (data.scenarioId) {
     sc = SCENARIOS.find(function(s) { return s.id === data.scenarioId; }) || null;
+  }
+  // 핵심원인 다중 선택 복원
+  if (data.selectedKeyCauses && data.selectedKeyCauses.length) {
+    selectedKeyCauses = data.selectedKeyCauses.slice();
+  }
+  // 다중 5Why 체인 복원
+  if (data.whyChains) {
+    Object.keys(data.whyChains).forEach(function(ci) {
+      why3ChainData[parseInt(ci)] = data.whyChains[ci];
+    });
   }
   var fields = data.fields || {};
   Object.keys(fields).forEach(function(id) {
