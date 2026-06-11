@@ -5219,36 +5219,110 @@ function viewSessionGroups(sessionCode, company) {
 function showGroupModal(code, d) {
   document.getElementById('modalGroupName').textContent = '👥 ' + code + ' · 상세 현황';
   var body = document.getElementById('modalBody');
-  if (!d) { body.innerHTML = '<p style="color:var(--muted);">아직 접속 기록이 없습니다.</p>'; }
-  else {
-    var f = d.fields || {};
-    var so = d.stepOutputs || {};
-    var rows = [
-      ['시나리오', d.scenarioId || '—'],
-      ['현재 단계', 'STEP ' + (d.currentStep||0) + ' / 10'],
-      ['현재 상황(AS-IS)', f.s1asis || '—'],
-      ['목표 상태(TO-BE)', f.s1tobe || '—'],
-      ['GAP 서술', f.s1gap || '—'],
-      ['담당자(페르소나)', f.s1persona || '—'],
-      ['문제 정의 확정', so[1] || '—'],
-      ['근본 원인', so[3] || '—'],
-      ['1순위 해결방안', f.s4sol1 || so[4] || '—'],
-      ['슬로건', f.s9sloan || '—'],
-    ];
-    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    rows.forEach(function(r) {
-      html += '<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--muted);white-space:nowrap;width:140px;font-weight:600;">' + r[0] + '</td>' +
-              '<td style="padding:8px 12px;border-bottom:1px solid var(--border);">' + r[1] + '</td></tr>';
-    });
-    if (d.whyChain && d.whyChain.some(function(w){return w;})) {
-      html += '<tr><td colspan="2" style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;color:var(--blue);">5Why 체인</td></tr>';
-      ['현상','Why1','Why2','Why3','근본원인'].forEach(function(lbl, i) {
-        if (d.whyChain[i]) html += '<tr><td style="padding:6px 12px;border-bottom:1px solid var(--border);color:var(--muted);">' + lbl + '</td><td style="padding:6px 12px;border-bottom:1px solid var(--border);">' + d.whyChain[i] + '</td></tr>';
-      });
-    }
-    html += '</table>';
-    body.innerHTML = html;
+  if (!d) { body.innerHTML = '<p style="color:var(--muted);">아직 접속 기록이 없습니다.</p>'; document.getElementById('adminModal').classList.add('show'); return; }
+
+  var f  = d.fields      || {};
+  var so = d.stepOutputs || {};
+  var wc = d.whyChains   || {};
+  var mc = d.meceData    || {};
+  var kc = d.selectedKeyCauses || [];
+  var done = d.currentStep || 0;
+
+  function row(label, val) {
+    if (!val || val === '—' || val === '') return '';
+    return '<tr><td style="padding:6px 12px;border-bottom:1px solid var(--border);color:var(--muted);white-space:nowrap;width:130px;font-size:12px;font-weight:600;vertical-align:top;">' + label + '</td>' +
+           '<td style="padding:6px 12px;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5;">' + val + '</td></tr>';
   }
+  function secHead(num, title, color) {
+    var mark = (done >= num)
+      ? ' <span style="color:#10B981;font-size:11px;">✓ 완료</span>'
+      : ' <span style="color:#6B7280;font-size:11px;">미완료</span>';
+    return '<tr><td colspan="2" style="padding:10px 12px 6px;background:rgba(255,255,255,.04);border-top:2px solid ' + color + ';border-bottom:1px solid var(--border);font-weight:700;font-size:13px;color:' + color + ';">STEP ' + num + ' · ' + title + mark + '</td></tr>';
+  }
+
+  var html = '<table style="width:100%;border-collapse:collapse;">';
+
+  // ── 요약 헤더 ──
+  html += '<tr style="background:rgba(255,255,255,.06);"><td colspan="2" style="padding:10px 12px;font-size:12px;color:var(--muted);">';
+  html += '시나리오: <b style="color:var(--text);">' + (d.scenarioId||'CUSTOM') + '</b>';
+  html += ' &nbsp;|&nbsp; 진행: <b style="color:#E8703A;">STEP ' + done + ' / 10</b>';
+  html += ' &nbsp;|&nbsp; 업데이트: ' + (d.lastUpdated ? d.lastUpdated.slice(0,16).replace('T',' ') : '—');
+  html += '</td></tr>';
+
+  // ── STEP 1 ──
+  html += secHead(1, '문제 정의', '#3B82F6');
+  html += row('AS-IS', f.s1asis);
+  html += row('TO-BE', f.s1tobe);
+  html += row('GAP 서술', f.s1gap);
+  html += row('담당자(페르소나)', f.s1persona);
+  html += row('협업 부서', f.s1collab);
+  html += row('기대효과', f.s1impact);
+  html += row('방치 리스크', f.s1risk);
+  html += row('우선순위 근거', f.s1priority);
+  html += row('문제 정의 확정', so[1]);
+
+  // ── STEP 2 ──
+  html += secHead(2, 'MECE 분석', '#8B5CF6');
+  html += row('분석 각도', f.s2angle);
+  if (mc.cats && mc.cats.length) {
+    mc.cats.forEach(function(cat) {
+      var leaves = (mc.leaves && mc.leaves[cat] || []).filter(function(l){ return l && !l.includes('세부 원인 입력'); });
+      if (leaves.length) html += row(cat, leaves.join(', '));
+    });
+  }
+  html += row('MECE 결과', so[2]);
+
+  // ── STEP 3 ──
+  html += secHead(3, '5Why 분석', '#EC4899');
+  html += row('핵심 원인 포커스', f.s3focus);
+  if (kc.length) {
+    kc.forEach(function(cause, ci) {
+      if (!cause) return;
+      var chain = wc[ci] || [];
+      var chainStr = chain.filter(Boolean).join(' → ');
+      html += row('원인 ' + (ci+1), cause + (chainStr ? '<br><span style="font-size:11px;color:var(--muted);">' + chainStr + '</span>' : ''));
+    });
+  } else if (d.whyChain && d.whyChain.some(function(w){return w;})) {
+    var labels = ['현상','Why1','Why2','Why3','근본원인'];
+    d.whyChain.forEach(function(w, i){ if (w) html += row(labels[i]||'Why'+i, w); });
+  }
+  html += row('도출된 근본 원인', so[3]);
+
+  // ── STEP 4 ──
+  html += secHead(4, '해결방안', '#F59E0B');
+  html += row('1순위 해결방안', f.s4sol1 || so[4]);
+  html += row('2순위 해결방안', f.s4sol2);
+  html += row('3순위 해결방안', f.s4sol3);
+
+  // ── STEP 5 ──
+  html += secHead(5, '증거 탐색', '#10B981');
+  html += row('증거 탐색 결과', so[5]);
+
+  // ── STEP 6 ──
+  html += secHead(6, '이해관계자', '#06B6D4');
+  html += row('이해관계자 분석', so[6]);
+
+  // ── STEP 7 ──
+  html += secHead(7, '제약 조건', '#EF4444');
+  html += row('제약 조건 검토', so[7]);
+
+  // ── STEP 8 ──
+  html += secHead(8, '실행 계획', '#F97316');
+  html += row('실행 계획 확정', so[8]);
+
+  // ── STEP 9 ──
+  html += secHead(9, '컨셉 도출', '#A855F7');
+  html += row('슬로건', f.s9slogan || f.s9sloan);
+  html += row('캐치프레이즈', f.s9catch);
+  html += row('컨셉 도출 결과', so[9]);
+
+  // ── STEP 10 ──
+  html += secHead(10, '종합 기획서', '#E8703A');
+  html += row('완성 여부', done >= 10 ? '✓ 완료' : '진행 중');
+  html += row('기획서 메모', so[10]);
+
+  html += '</table>';
+  body.innerHTML = html;
   document.getElementById('adminModal').classList.add('show');
 }
 function closeModal() { document.getElementById('adminModal').classList.remove('show'); }
