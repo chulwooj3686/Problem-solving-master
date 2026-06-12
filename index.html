@@ -1003,16 +1003,13 @@ const DEMO_MODE       = false;  // Firebase 연결됨
 
 <!-- ═══ 로비 화면 (세션 통과 후) ═══ -->
 <div id="screen-lobby" style="display:none;">
-  <div class="lobby-card">
+  <div class="lobby-card" style="max-width:520px;">
     <div class="lobby-logo">PROBLEM-SOLVING MASTER</div>
     <div class="lobby-title">문제해결 프로세스 실습</div>
-    <div class="lobby-sub" id="lobbySub">조 코드를 입력하면 워크스페이스가 열립니다.</div>
-    <input class="lobby-input" id="groupCodeInput" type="text" maxlength="10"
-      placeholder="조 코드 입력 (예: 1조)"
-      onkeydown="if(event.key==='Enter') enterGroup()">
-    <button class="lobby-btn" onclick="enterGroup()">입장하기</button>
+    <div class="lobby-sub" id="lobbySub">소속 조를 선택하면 워크스페이스가 열립니다.</div>
+    <div id="groupSelectGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:20px 0;"></div>
     <div class="lobby-err" id="lobbyErr"></div>
-    <div style="margin-top:16px;font-size:11px;color:var(--muted);">© 2026 GAM Consulting · 본 앱 데이터는 외부로 전송되지 않습니다.</div>
+    <div style="margin-top:16px;font-size:11px;color:var(--muted);">© 2026 GAM Consulting · 같은 조를 선택한 팀원과 실시간 공유됩니다.</div>
   </div>
 </div>
 
@@ -4582,7 +4579,14 @@ function generateWordDoc() {
   // HTML → Word (.doc) 변환
   var wordHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
     '<style>body{font-family:"Malgun Gothic",sans-serif;font-size:11pt;color:#1A1A2E;margin:0;padding:0;}' +
-    '@page{margin:2.5cm 2.8cm;}</style></head><body>' + rows + '</body></html>';
+    '@page{margin:2.5cm 2.8cm;}</style></head><body>' + rows + '
+<!-- 실시간 동기화 토스트 -->
+<div id="syncToast" style="position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+  background:rgba(16,185,129,.92);color:#fff;padding:7px 18px;border-radius:20px;
+  font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity .4s;pointer-events:none;">
+  🔄 팀원과 실시간 동기화됨
+</div>
+</body></html>';
 
   var blob = new Blob(['﻿', wordHtml], { type: 'application/msword' });
   var url  = URL.createObjectURL(blob);
@@ -4822,7 +4826,7 @@ function enterSession() {
       document.getElementById('screen-lobby').style.display = 'flex';
       if (session.company) {
         document.getElementById('lobbySub').innerHTML =
-          '조 코드를 입력하면 워크스페이스가 열립니다.<br><strong style="color:var(--blue);">' + session.company + '</strong>';
+          '소속 조를 선택하면 워크스페이스가 열립니다.<br><strong style="color:var(--blue);">' + session.company + '</strong>';
       }
     });
   } else {
@@ -4845,9 +4849,30 @@ function backToSession() {
 }
 
 // ── 교육생 입장 ──
-function enterGroup() {
-  var code = (document.getElementById('groupCodeInput').value || '').trim();
-  if (!code) { document.getElementById('lobbyErr').textContent = '조 코드를 입력해주세요.'; return; }
+var _groupRtListener = null;  // 실시간 리스너 핸들
+var _applyingRemote  = false; // 원격 데이터 적용 중 플래그
+
+function buildGroupSelectGrid() {
+  var grid = document.getElementById('groupSelectGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (var i = 1; i <= 10; i++) {
+    (function(n) {
+      var btn = document.createElement('button');
+      btn.textContent = n + '조';
+      btn.style.cssText = 'padding:14px 0;border-radius:12px;border:2px solid rgba(59,130,246,.3);' +
+        'background:rgba(59,130,246,.08);color:var(--blue);font-size:15px;font-weight:700;cursor:pointer;' +
+        'transition:all .15s;';
+      btn.onmouseover = function() { this.style.background='rgba(59,130,246,.22)'; this.style.borderColor='var(--blue)'; };
+      btn.onmouseout  = function() { this.style.background='rgba(59,130,246,.08)'; this.style.borderColor='rgba(59,130,246,.3)'; };
+      btn.onclick = function() { enterGroup(n + '조'); };
+      grid.appendChild(btn);
+    })(i);
+  }
+}
+
+function enterGroup(code) {
+  if (!code) { document.getElementById('lobbyErr').textContent = '조를 선택해주세요.'; return; }
   currentGroupCode = code;
   document.getElementById('screen-lobby').style.display = 'none';
   var pill = document.querySelector('.step-pill');
@@ -4859,10 +4884,56 @@ function enterGroup() {
   var teamName = document.getElementById('sidebarTeamName');
   if (teamBox) teamBox.style.display = '';
   if (teamName) teamName.textContent = (currentSessionCode ? currentSessionCode + ' · ' : '') + code;
-  loadGroupData(code, function() {
-    buildProg(); buildScGrid(); buildMeceFrameGrid();
-    updateSidebar(1);
-  });
+
+  // 실시간 리스너 연결
+  if (db) {
+    var path = currentSessionCode
+      ? 'groups/' + currentSessionCode + '/' + code
+      : 'groups/default/' + code;
+    // 기존 리스너 해제
+    if (_groupRtListener) { db.ref(_groupRtListenerPath).off('value', _groupRtListener); }
+    _groupRtListenerPath = path;
+    _groupRtListener = db.ref(path).on('value', function(snap) {
+      if (!snap.exists()) {
+        buildProg(); buildScGrid(); buildMeceFrameGrid(); updateSidebar(1);
+        return;
+      }
+      var remote = snap.val();
+      // 내가 방금 저장한 데이터면 무시 (깜빡임 방지)
+      if (_applyingRemote) return;
+      _applyingRemote = true;
+      applyGroupData(remote);
+      buildProg(); updateSidebar(cur);
+      // 동기화 알림 (최초 1회 및 원격 변경 시)
+      showSyncToast();
+      setTimeout(function() { _applyingRemote = false; }, 300);
+    }, function() {
+      // 오프라인 fallback
+      loadGroupDataLocal(code);
+      buildProg(); buildScGrid(); buildMeceFrameGrid(); updateSidebar(1);
+    });
+  } else {
+    loadGroupDataLocal(code);
+    buildProg(); buildScGrid(); buildMeceFrameGrid(); updateSidebar(1);
+  }
+}
+
+var _groupRtListenerPath = '';
+var _syncToastShown = false;
+
+function showSyncToast() {
+  var el = document.getElementById('syncToast');
+  if (!el) return;
+  el.style.opacity = '1';
+  setTimeout(function() { el.style.opacity = '0'; }, 1800);
+}
+
+function loadGroupDataLocal(code) {
+  var key = (currentSessionCode || 'demo') + '_' + code;
+  try {
+    var raw = localStorage.getItem('psm_group_' + key);
+    if (raw) applyGroupData(JSON.parse(raw));
+  } catch(e) {}
 }
 
 // ── 관리자 로그인 ──
@@ -4940,35 +5011,25 @@ function collectAllData() {
 
 function saveGroupData() {
   if (!currentGroupCode) return;
+  _applyingRemote = true;  // 내 저장으로 인한 콜백 무시
   var data = collectAllData();
   if (db) {
     var path = currentSessionCode
       ? 'groups/' + currentSessionCode + '/' + currentGroupCode
       : 'groups/default/' + currentGroupCode;
-    db.ref(path).set(data);
+    db.ref(path).set(data, function() {
+      setTimeout(function() { _applyingRemote = false; }, 500);
+    });
   } else {
     var key = (currentSessionCode || 'demo') + '_' + currentGroupCode;
     try { localStorage.setItem('psm_group_' + key, JSON.stringify(data)); } catch(e) {}
+    setTimeout(function() { _applyingRemote = false; }, 100);
   }
 }
 
 function loadGroupData(code, callback) {
-  if (db) {
-    var path = currentSessionCode
-      ? 'groups/' + currentSessionCode + '/' + code
-      : 'groups/default/' + code;
-    db.ref(path).once('value', function(snap) {
-      if (snap.exists()) applyGroupData(snap.val());
-      if (callback) callback();
-    });
-  } else {
-    var key = (currentSessionCode || 'demo') + '_' + code;
-    try {
-      var raw = localStorage.getItem('psm_group_' + key);
-      if (raw) applyGroupData(JSON.parse(raw));
-    } catch(e) {}
-    if (callback) callback();
-  }
+  // 실시간 리스너 방식(enterGroup)에서 처리하므로 callback만 호출
+  if (callback) callback();
 }
 
 function applyGroupData(data) {
@@ -5427,6 +5488,7 @@ wrapGoNext();
 buildProg();
 buildScGrid();
 buildMeceFrameGrid();
+buildGroupSelectGrid();
 </script>
 </body>
 </html>
