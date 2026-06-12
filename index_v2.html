@@ -4579,14 +4579,7 @@ function generateWordDoc() {
   // HTML → Word (.doc) 변환
   var wordHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
     '<style>body{font-family:"Malgun Gothic",sans-serif;font-size:11pt;color:#1A1A2E;margin:0;padding:0;}' +
-    '@page{margin:2.5cm 2.8cm;}</style></head><body>' + rows + '
-<!-- 실시간 동기화 토스트 -->
-<div id="syncToast" style="position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
-  background:rgba(16,185,129,.92);color:#fff;padding:7px 18px;border-radius:20px;
-  font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity .4s;pointer-events:none;">
-  🔄 팀원과 실시간 동기화됨
-</div>
-</body></html>';
+    '@page{margin:2.5cm 2.8cm;}</style></head><body>' + rows + '</body></html>';
 
   var blob = new Blob(['﻿', wordHtml], { type: 'application/msword' });
   var url  = URL.createObjectURL(blob);
@@ -4903,7 +4896,7 @@ function enterGroup(code) {
       if (_applyingRemote) return;
       _applyingRemote = true;
       applyGroupData(remote);
-      buildProg(); updateSidebar(cur);
+      buildProg(); buildScGrid(); buildMeceFrameGrid(); updateSidebar(cur);
       // 동기화 알림 (최초 1회 및 원격 변경 시)
       showSyncToast();
       setTimeout(function() { _applyingRemote = false; }, 300);
@@ -5490,5 +5483,8 @@ buildScGrid();
 buildMeceFrameGrid();
 buildGroupSelectGrid();
 </script>
-</body>
-</html>
+<!-- 실시간 동기화 토스트 -->
+<div id="syncToast" style="position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+  background:rgba(16,185,129,.92);color:#fff;padding:7px 18px;border-radius:20px;
+  font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity .4s;pointer-events:none;">
+  🔄 팀원과 실시간
