@@ -958,8 +958,218 @@ const MECE_FRAMES = [
       '구매 시점 단계': ['전환 장벽 과다', '가격·조건 경쟁력 부족', '구매 결정 유도 미흡'],
       '구매 후 단계': ['사후 관리·팔로우업 부재', '재구매 유인 부족', '고객 불만 처리 미흡']
     }
+  },
+  {
+    id: 'F07', name: '4P (마케팅 믹스)',
+    cats: ['Price (가격·수익 구조)', 'Product (제품·서비스)', 'Place (채널·유통)', 'Promotion (홍보·커뮤니케이션)'],
+    use: '마케팅·신제품 출시 문제',
+    leaves: {
+      'Price (가격·수익 구조)': ['가격 경쟁력 열위·이탈 반복', '가격 대비 가치 전달 체계 없음', '가격 패키지·옵션 구조 불명확'],
+      'Product (제품·서비스)': ['핵심 고객 문제 해결 기능 부족', '고객 니즈와 제품 스펙 불일치', '차별화 포인트 미흡'],
+      'Place (채널·유통)': ['주요 유통 채널 접근성 부족', '온·오프라인 채널 연계 전략 없음', '파트너·대리점 관리 체계 미흡'],
+      'Promotion (홍보·커뮤니케이션)': ['인지도 확보 캠페인 전략 부재', '타깃 메시지 불명확', '마케팅 채널 다양성·성과 측정 미흡']
+    }
+  },
+  {
+    id: 'F08', name: '4M (제조·운영)',
+    cats: ['Man (인력·역량)', 'Material (자재·소재)', 'Machine (설비·기술)', 'Money (예산·비용)'],
+    use: '제조·품질·생산 문제',
+    leaves: {
+      'Man (인력·역량)': ['현장 작업자 숙련도 부족', '교육·훈련 체계 미흡', '인력 배치 기준 불명확'],
+      'Material (자재·소재)': ['자재 품질 기준·입고 검사 미흡', '자재 공급 불안정·리드타임 편차', '수급 예측·재고 관리 체계 없음'],
+      'Machine (설비·기술)': ['설비 노후화·예방 정비 루틴 부재', '설비 이상 감지·조기 경보 체계 없음', '기술 도입·전환 계획 지연'],
+      'Money (예산·비용)': ['설비 투자 우선순위 기준 없음', '예방 비용 대비 고장 손실 분석 부재', '원가 구조 개선 체계 미흡']
+    }
+  },
+  {
+    id: 'F09', name: 'Hard / Soft',
+    cats: ['Hard (제도·구조·시스템)', 'Soft (인식·태도·문화)'],
+    use: '변화관리·조직혁신 문제',
+    leaves: {
+      'Hard (제도·구조·시스템)': ['기준·절차 미비 또는 비현실적', '역할·권한 구조 불명확', '변화 지원 시스템·도구 부재'],
+      'Soft (인식·태도·문화)': ['변화 필요성 공감 부족', '리더십 솔선수범·언행 일치 미흡', '기존 관행과 변화 방향 충돌 미해소']
+    }
   }
 ];
+
+// ── 문제 도메인 감지 ──────────────────────────────────────────
+function detectProblemDomain(gap) {
+  var g = (gap || '').toLowerCase();
+  if (/영업|매출|수주|계약|클로징|제안|판매/.test(g)) return 'sales';
+  if (/채용|인재|역량 개발|교육훈련|온보딩|퇴직|hr/.test(g)) return 'hr';
+  if (/생산|제조|품질|불량|납기|공정|재고|설비/.test(g)) return 'ops';
+  if (/전략|방향|목표 달성|경쟁 우위|시장 점유/.test(g)) return 'strategy';
+  if (/시스템|데이터|플랫폼|개발|자동화|디지털/.test(g)) return 'it';
+  if (/소통|협업|갈등|신뢰|부서 간|커뮤니케이션/.test(g)) return 'comm';
+  if (/마케팅|인지도|브랜드|콘텐츠|광고/.test(g)) return 'mktg';
+  if (/서비스|cs|고객 불만|응대|만족도/.test(g)) return 'cs';
+  return 'general';
+}
+
+// ── 카테고리 유형 감지 ────────────────────────────────────────
+function detectCatType(catName) {
+  var c = catName.toLowerCase();
+  if (/material|자재/.test(c)) return 'material';
+  if (/machine|설비/.test(c)) return 'machine';
+  if (/method|방법/.test(c)) return 'method';
+  if (/price|가격/.test(c)) return 'price';
+  if (/product|제품/.test(c)) return 'product';
+  if (/place|채널|유통/.test(c)) return 'place';
+  if (/promotion|홍보/.test(c)) return 'promotion';
+  if (/hard|경성/.test(c)) return 'hard';
+  if (/soft|연성/.test(c)) return 'soft';
+  if (/사람|인력|인재|man/.test(c) && !/machine|material|money/.test(c)) return 'person';
+  if (/시스템|제도|통제/.test(c)) return 'system';
+  if (/문화|관행|규범/.test(c)) return 'culture';
+  if (/일 \(|업무|프로세스/.test(c)) return 'work';
+  if (/돈 \(|예산|비용|money/.test(c)) return 'money';
+  if (/고객|customer/.test(c)) return 'customer';
+  if (/경쟁사|competitor/.test(c)) return 'competitor';
+  if (/자사|company/.test(c)) return 'company';
+  if (/수요/.test(c)) return 'demand';
+  if (/공급/.test(c)) return 'supply';
+  if (/운영/.test(c)) return 'operation';
+  if (/나 \(/.test(c) || c.trim() === '나') return 'self';
+  if (/우리 팀|소집단/.test(c)) return 'team';
+  if (/조직|구조/.test(c)) return 'org';
+  if (/최초|접촉/.test(c)) return 'touch1';
+  if (/구매.{0,3}시점/.test(c)) return 'touch2';
+  if (/구매.{0,3}후/.test(c)) return 'touch3';
+  return 'other';
+}
+
+// ── 맥락 인식 원인 풀 ─────────────────────────────────────────
+var _CONTEXT_LEAF_POOLS = {
+  person: {
+    sales:    ['영업 제안·설득 역량 부족', '고객 니즈·구매 기준 파악 미흡', '클로징·협상 스킬 부족'],
+    hr:       ['핵심 역량 육성 체계 없음', '리더 후계자 파이프라인 공백', '코칭·피드백 역량 부족'],
+    ops:      ['현장 표준 작업 숙지 미흡', '이상 상황 대응 역량 부족', '안전·품질 의식 저하'],
+    strategy: ['전략 해석·실행 역량 격차', '중간관리자 방향 제시 미흡', '의사결정 기준 미내재화'],
+    it:       ['IT 시스템 활용 역량 부족', '데이터 분석 스킬 미흡', '디지털 적응 의지 부족'],
+    comm:     ['경청·공감 역량 부족', '의견 조율 스킬 미흡', '명확한 메시지 전달 역량 부족'],
+    mktg:     ['마케팅 기획·콘텐츠 역량 부족', '디지털 채널 운영 역량 미흡', '고객 데이터 분석 스킬 부족'],
+    cs:       ['고객 응대 스크립트 숙지 미흡', 'CS 담당자 역량 편차 심각', '불만 원인 분석 역량 부족']
+  },
+  system: {
+    sales:    ['영업 프로세스 표준화 미흡', 'CRM 도구 활용·운영 기준 없음', '실적 리뷰·코칭 체계 부재'],
+    hr:       ['평가·보상 연계 기준 미흡', '교육 체계 현장 연계 부재', '채용-온보딩-육성 흐름 단절'],
+    ops:      ['작업 기준서 최신화 미흡', '이상 감지·알림 체계 부재', '불량·지연 추적 체계 없음'],
+    strategy: ['전략을 KPI로 번역하는 체계 미흡', '전략 리뷰·점검 주기 부재', '의사결정 권한 기준 불명확'],
+    it:       ['레거시 시스템 연동 오류', '데이터 표준화·통합 체계 부재', '시스템 도입 후 운영 지원 미흡'],
+    comm:     ['정보 공유 채널·기준 부재', '협업 도구 활용 미흡', '업무 협조 처리 절차 없음'],
+    mktg:     ['마케팅 실행 캘린더·체계 부재', '성과 추적 도구 미연결', '콘텐츠 발행 프로세스 미표준화'],
+    cs:       ['CS 처리 기준·매뉴얼 부재', '불만 접수-처리-피드백 체계 미흡', '반복 불만 패턴 분석 체계 없음']
+  },
+  culture: {
+    sales:    ['고객보다 내부 편의 우선 관행', '단기 수치만 강조하는 압박 문화', '팀 간 고객 정보 공유 기피'],
+    hr:       ['위계적 소통으로 발언 억제', '실패를 감추는 조직 분위기', '변화를 위협으로 인식하는 문화'],
+    ops:      ['"원래 이렇게 했다"는 관행 우선', '문제 보고 회피 성향 만연', '개선 제안 무시되는 분위기'],
+    strategy: ['단기 성과 집착으로 전략 행동 외면', '도전적 목표 설정 회피 성향', '관행 우선·새 방향 저항 경향'],
+    it:       ['현업의 시스템 변화 저항', 'IT 부서와 현업 간 불신', '디지털 전환을 부담으로 인식'],
+    comm:     ['부서 이기주의·사일로 문화', '갈등 공개 논의 회피', '상사 눈치로 솔직한 소통 차단'],
+    mktg:     ['영업-마케팅 협업 문화 부재', '"감"으로 기획하는 관행 지속', '데이터보다 선례 우선 경향'],
+    cs:       ['불만을 개인 감정으로 받아들이는 분위기', '빠른 종결만 강조하는 처리 문화', '고객 피드백을 학습에 미활용']
+  },
+  work: {
+    sales:    ['영업 단계별 활동 기준 부재', '리드→제안→클로징 병목 구간 존재', '고객 데이터 활용 분석 체계 없음'],
+    hr:       ['성과관리 프로세스 실효성 부족', '교육 설계·운영 연계 체계 미흡', '채용 절차 표준화 부재'],
+    ops:      ['작업 순서·방법 표준화 미흡', '예방 점검 루틴 부재', '공정 간 인수인계 기준 없음'],
+    strategy: ['전략 실행 과제 우선순위 혼선', '실행-리뷰-개선 루프 부재', '실행 일정·담당자 불명확'],
+    it:       ['요구사항-설계-개발-테스트 흐름 단절', '변경 관리 프로세스 미흡', '운영·유지보수 기준 부재'],
+    comm:     ['회의 운영 원칙·기준 없음', '업무 지시-확인-피드백 루프 없음', '협업 요청-응답 프로세스 부재']
+  },
+  money: {
+    sales:    ['마케팅·영업 예산 배분 비효율', '성과 기반 인센티브 체계 미흡', '고객 획득 비용 대비 수익 관리 없음'],
+    hr:       ['HR 예산 전략과제 연계 미흡', '교육 투자 대비 효과 측정 없음', '핵심인재 유지 보상 체계 부재'],
+    ops:      ['설비 투자 우선순위 기준 없음', '예방 비용 대비 고장 손실 분석 없음', '원가 구조 개선 체계 미흡'],
+    strategy: ['전략과제 예산 배분 기준 불명확', '장기 투자 성과 측정 체계 없음', '단기 실적 중심 자원 배분 반복']
+  },
+  customer: {
+    sales:    ['핵심 고객군 과도하게 넓게 설정', '고객 구매 기준·결정 요인 미파악', '단계별 고객 기대치 관리 실패'],
+    mktg:     ['타깃 고객 페르소나 미정의', '고객 언어와 우리 메시지 불일치', '고객 니즈 변화 모니터링 부재'],
+    cs:       ['핵심 불만 고객군 대응 체계 없음', '고객 기대 수준 파악 미흡', '불만 유형 분류·분석 부재'],
+    strategy: ['시장 세분화 기준 불명확', '핵심 타깃 고객 정의 부재', '고객 가치 제안 차별화 미흡']
+  },
+  competitor: {
+    sales:    ['경쟁사 가격·조건 대응 기준 부재', '경쟁사 제안 차별화 분석 없음', '경쟁 입찰 전략 체계 미흡'],
+    strategy: ['경쟁사 전략 모니터링 루틴 부재', '경쟁 지형 변화 대응 체계 없음', '차별화 포지셔닝 기준 불명확'],
+    mktg:     ['경쟁사 마케팅 메시지 분석 미흡', '채널·콘텐츠 경쟁 분석 부재', '경쟁 대비 강점 메시지 미정립']
+  },
+  company: {
+    sales:    ['내부 제품·서비스 강점 정리 미흡', '영업-개발-마케팅 정렬 실패', '실행 속도와 대응력 저하'],
+    strategy: ['핵심 역량 명확화 부재', '전략 실행 속도 저하', '조직 구조·역할 전략 미연계'],
+    mktg:     ['브랜드 아이덴티티 불명확', '내부 역량 기반 콘텐츠 자산화 미흡', '채널별 일관된 메시지 부재']
+  },
+  touch1: {
+    sales:    ['인지도·노출 채널 부족', '첫 접촉 메시지 명확성 부족', '타깃 고객 접근 채널 미개발'],
+    mktg:     ['검색·SNS 노출 전략 부재', '첫인상 콘텐츠 설득력 부족', '타깃 접근 채널 다양성 부족']
+  },
+  touch2: {
+    sales:    ['전환 장벽 과다 (복잡한 절차)', '지금 구매해야 할 긴급성 형성 미흡', '구매 결정 유도 스크립트·도구 부재'],
+    mktg:     ['구매 유도 CTA 설계 미흡', '가격 대비 가치 전달 불충분', '전환 단계 이탈 지점 미분석']
+  },
+  touch3: {
+    sales:    ['구매 후 7·30일 팔로업 프로세스 부재', '재구매 유인 프로그램 없음', '고객 불만 접수·처리 체계 미흡'],
+    cs:       ['구매 후 온보딩 지원 체계 부재', '고객 불만 처리 속도 저하', '재구매 전환 점검 루틴 없음']
+  },
+  price: {
+    sales:    ['가격 경쟁력 열위로 이탈 반복', '가격 대비 가치 설명 체계 없음', '가격 옵션 구조 불명확'],
+    mktg:     ['가격 포지셔닝 전략 미수립', '경쟁사 대비 가격 모니터링 부재', '할인·프로모션 기준 불명확'],
+    strategy: ['수익 구조 재설계 필요성 미인식', '가격 결정 근거·기준 부재', '프리미엄·저가 포지셔닝 선택 없음']
+  },
+  product: {
+    sales:    ['핵심 고객 문제 해결 기능 부족', '고객 니즈와 제품 스펙 불일치', 'UX·사용 편의성 저하'],
+    it:       ['핵심 기능 미완성 또는 버그 다수', '사용자 요구사항 반영 체계 없음', '제품 로드맵 우선순위 불명확'],
+    mktg:     ['제품 강점의 고객 언어 번역 미흡', '차별화 스토리 부재', '제품-메시지 일관성 부족']
+  },
+  place: {
+    sales:    ['주요 유통 채널 접근성 부족', '온·오프라인 채널 연계 전략 없음', '파트너·대리점 관리 체계 미흡'],
+    mktg:     ['디지털 채널 다양성 부족', 'SEO·SNS 채널 활용 미흡', '고객 접점 채널 최적화 부재'],
+    strategy: ['채널 믹스 전략 부재', '신규 채널 진입 기준 없음', '채널별 성과 측정 체계 미흡']
+  },
+  promotion: {
+    sales:    ['타깃 도달 마케팅 활동 부재', '영업 지원 자료·콘텐츠 부족', '구매 유도 제안 설계 미흡'],
+    mktg:     ['인지도 확보 캠페인 전략 부재', '콘텐츠 발행 계획·일관성 없음', '마케팅 채널별 성과 측정 미흡'],
+    comm:     ['내부 메시지 외부 커뮤니케이션 연계 없음', '홍보 일정·책임자 불명확', '미디어·PR 전략 부재']
+  },
+  hard: {
+    hr:       ['평가·보상 제도 변화 방향 미반영', '새 조직 구조와 업무 흐름 불일치', '변화 지원 시스템·도구 미구축'],
+    ops:      ['표준 작업 절차 현실 반영 미흡', '변화된 공정 기준 미문서화', '변화 지원 설비·기술 투자 지연'],
+    strategy: ['전략 변화 반영한 KPI 재설계 미흡', '새 방향에 맞는 조직 구조 미전환', '실행 지원 시스템 정비 지연'],
+    it:       ['레거시 시스템 변화 대응 지연', '데이터 인프라 개선 투자 부족', '프로세스 자동화 전환 미착수']
+  },
+  soft: {
+    hr:       ['변화 필요성에 대한 구성원 공감 부족', '리더의 솔선수범·언행 일치 미흡', '기존 관행과 새 방향 충돌 미해소'],
+    ops:      ['현장 변화 거부감과 수동적 참여', '변화 이후 학습·적응 지원 미흡', '변화 성과에 대한 인정·축하 없음'],
+    strategy: ['전략 방향에 대한 공감·납득 부족', '관리자의 변화 메시지 일관성 없음', '변화 시도에 대한 두려움·저항 해소 미흡'],
+    it:       ['IT 변화에 대한 현업 공감 부족', '사용자 교육·변화 지원 미흡', '"또 새 시스템" 피로감 해소 미흡']
+  },
+  demand:    { ops: ['수요 패턴 데이터 기반 예측 미흡', '외부 변수(프로모션·계절) 반영 부재', '이상 수요 감지 기준 없음'] },
+  supply:    { ops: ['공급업체 납기 성과 관리 체계 부재', '발주 기준·리드타임 표준 없음', '긴급 발주 대응 체계 미흡'] },
+  operation: { ops: ['현장 표준작업 절차 미준수 빈번', '실시간 재고 가시성 도구 부재', '이상 대응 의사결정 기준 없음'] },
+  self:      { hr: ['자기인식·강점 파악 미흡', '개인 학습 목표와 실행 연결 부재', '피드백 수용·성찰 습관 없음'] },
+  team:      { hr: ['팀 목표 이해도 및 공유 수준 저하', '팀 내 피드백 문화 미성숙', '협업 방식 합의 부재'] },
+  org:       { hr: ['평가·보상 공정성 체계 미흡', '전략 방향-인력 운영 연계 부재', '조직 학습 루틴 없음'] },
+  material:  { general: ['자재 품질 기준·입고 검사 미흡', '자재 공급 불안정·리드타임 편차', '수급 예측·재고 관리 체계 없음'] },
+  machine:   {
+    ops: ['설비 노후화·예방 정비 루틴 부재', '설비 이상 감지·조기 경보 체계 없음', '기술 도입·전환 계획 지연'],
+    it:  ['레거시 시스템 성능 저하', '주요 시스템 장애 대응 체계 미흡', '기술 부채 누적과 전환 지연']
+  },
+  method:    { general: ['표준 작업 절차 현장 미준수', '공정 간 인수인계 기준 없음', '개선 제안 수집·반영 체계 부재'] }
+};
+
+// ── 맥락 인식 MECE 원인 생성 ────────────────────────────────
+function generateContextualMeceLeaves(frame, gap) {
+  var domain = detectProblemDomain(gap);
+  var result = {};
+  frame.cats.forEach(function(cat) {
+    var catType = detectCatType(cat);
+    var pool = _CONTEXT_LEAF_POOLS[catType] || {};
+    var leaves = pool[domain] || pool['general'] || (frame.leaves[cat] || []);
+    result[cat] = leaves.slice(0, 3);
+  });
+  return result;
+}
 </script>
 
 <!-- ═══ FIREBASE CONFIG (여기에 본인 Firebase 설정 입력) ═══ -->
@@ -1717,9 +1927,24 @@ const DEMO_MODE       = false;  // Firebase 연결됨
   </div>
 
   <div class="input-zone">
-    <div class="input-zone-title">① 특별히 우려되는 제약이 있으면 입력하세요 (선택)</div>
-    <div class="form-row">
-      <input type="text" id="s7concern" placeholder="예: 예산이 500만 원으로 제한되어 있습니다">
+    <div class="input-zone-title">① 4가지 제약 조건 입력 (항목별로 구체적으로 적을수록 AI 분석이 정확해집니다)</div>
+    <div class="grid2">
+      <div class="form-row">
+        <label>💰 예산 (Budget)</label>
+        <input type="text" id="s7budget" placeholder="예: 초기 예산 500만 원 이내, 추가 확보 어려움">
+      </div>
+      <div class="form-row">
+        <label>⏰ 기한 (Deadline)</label>
+        <input type="text" id="s7deadline" placeholder="예: 분기 내(3개월) 완료해야 함, 연말 결산 전 착수 필요">
+      </div>
+      <div class="form-row">
+        <label>👥 사람 (People)</label>
+        <input type="text" id="s7people" placeholder="예: 전담 인력 없음, 팀원 2명이 겸직으로 진행">
+      </div>
+      <div class="form-row">
+        <label>⚠️ 기타 (Other)</label>
+        <input type="text" id="s7other" placeholder="예: 경영진 승인 필요, 외부 업체 의뢰 규정 제한">
+      </div>
     </div>
   </div>
 
@@ -1791,9 +2016,24 @@ const DEMO_MODE       = false;  // Firebase 연결됨
   <div class="step-sub">전체 기획의 핵심을 한 줄 슬로건으로 압축합니다. AI가 키워드와 헤드라인을 제안합니다.</div>
 
   <div class="input-zone">
-    <div class="input-zone-title">① 강조하고 싶은 방향 입력 (선택)</div>
-    <div class="form-row">
-      <input type="text" id="s9dir" placeholder="예: 빠른 실행력, 데이터 기반, 협업 강조 등">
+    <div class="input-zone-title">① 컨셉 구성 요소 입력 — 입력할수록 한 줄 컨셉이 정교해집니다</div>
+    <div class="grid2">
+      <div class="form-row">
+        <label>🎯 목적 (Purpose)</label>
+        <input type="text" id="s9purpose" placeholder="예: 고객 재구매율 향상, 팀 협업 구조 개선">
+      </div>
+      <div class="form-row">
+        <label>🗺️ 범위 (Scope)</label>
+        <input type="text" id="s9scope" placeholder="예: 마케팅팀 전체, 서울 지역, 올해 상반기">
+      </div>
+      <div class="form-row">
+        <label>🔍 비교대상 (Benchmark)</label>
+        <input type="text" id="s9compare" placeholder="예: 경쟁사 대비, 전년 동기 대비, 업계 평균 대비">
+      </div>
+      <div class="form-row">
+        <label>📊 수치 (Number)</label>
+        <input type="text" id="s9number" placeholder="예: 20% 개선, 3개월 내 2배, 불량률 5% 이하">
+      </div>
     </div>
   </div>
 
@@ -1809,6 +2049,12 @@ const DEMO_MODE       = false;  // Firebase 연결됨
   <div class="ai-out" id="ai9out">
     <div class="ai-out-hdr"><div class="ai-chip">🤖 AI 컨셉 제안</div></div>
     <div class="ai-out-body">
+      <!-- 구조화된 한 줄 컨셉 헤드라인 -->
+      <div id="s9conceptBlock" style="display:none;margin-bottom:20px;background:linear-gradient(135deg,#FFF4EE,#FEF3C7);border:2px solid var(--primary);border-radius:14px;padding:20px;">
+        <div style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">📌 한 줄 컨셉 (구조화 제안)</div>
+        <div id="s9conceptLine" style="font-size:18px;font-weight:800;color:#1a1a2e;line-height:1.5;word-break:keep-all;"></div>
+        <div id="s9conceptMeta" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
       <div class="form-row">
         <label>🔑 AI 추천 키워드 (클릭하여 선택)</label>
         <div id="kwTags" class="tag-list"></div>
@@ -2175,38 +2421,57 @@ function getEvidenceForCause(cause) {
   return { question: q, items: items };
 }
 
-// ── 증거탐색 생성 — 핵심원인 기반 우선, fallback은 해결방안 기반 ─────────────
+// ── 증거탐색 생성 — 문제정의·근본원인 기반 구체적 검증기준 ─────────────────
 function generateEvidenceFromSolution(solution, rootCause, problem) {
-  var causes = (typeof selectedKeyCauses !== 'undefined') ? selectedKeyCauses.filter(Boolean) : [];
+  var causes  = (typeof selectedKeyCauses !== 'undefined') ? selectedKeyCauses.filter(Boolean) : [];
+  var gap     = (document.getElementById('s1gap')     ? document.getElementById('s1gap').value     : '').trim() || problem || '';
+  var persona = (document.getElementById('s1persona') ? document.getElementById('s1persona').value : '').trim() || '담당팀';
+  var tobe    = (document.getElementById('s1tobe')    ? document.getElementById('s1tobe').value    : '').trim();
+  var gShort  = gap.length  > 22 ? gap.slice(0, 22)  + '…' : gap  || '문제 상황';
+  var tobeS   = tobe.length > 20 ? tobe.slice(0, 20) + '…' : tobe || '목표 상태';
 
-  // 핵심원인이 선택된 경우: 원인별 검증질문 + 증거 항목 생성
+  // 핵심원인이 선택된 경우 — 원인별 + 근본원인 기반 구체적 검증기준 생성
   if (causes.length) {
     var result = [];
-    causes.forEach(function(cause) {
+    causes.forEach(function(cause, cIdx) {
+      // 해당 원인의 근본원인 읽기 (why3ChainData[cIdx][4])
+      var rCause = '';
+      if (typeof why3ChainData !== 'undefined' && why3ChainData[cIdx] && why3ChainData[cIdx][4]) {
+        rCause = why3ChainData[cIdx][4];
+      }
+      rCause = rCause || rootCause || '';
+      var rShort = rCause.length > 28 ? rCause.slice(0, 28) + '…' : rCause;
+      var causeShort = cause.length > 26 ? cause.slice(0, 26) + '…' : cause;
       var ev = getEvidenceForCause(cause);
-      var causeShort = cause.length > 24 ? cause.slice(0, 24) + '…' : cause;
-      // 검증 질문 헤더
-      result.push('🔍 [' + causeShort + '] ' + ev.question);
-      // 증거 항목 (4개)
-      ev.items.forEach(function(item) { result.push(item); });
+
+      // 검증질문 헤더 — 문제정의와 근본원인을 명시
+      result.push('🔍 검증 기준: [' + causeShort + '] → "' + gShort + '" 해결 여부 판단 질문: ' + ev.question);
+
+      // 기존 4개 항목을 근본원인·문제정의 맥락으로 강화
+      var rCtx = rShort ? ' (근본원인: "' + rShort + '" 해소 여부 포함)' : '';
+      ev.items.forEach(function(item) {
+        result.push(item + rCtx);
+        rCtx = ''; // 첫 항목에만 근본원인 주석 추가
+      });
+
+      // 문제정의 직접 연결 기준선 항목 추가
+      result.push('[기준선] "' + gShort + '" → "' + tobeS + '" 전환을 확인할 수 있는 Before 수치·상태 기록 (실행 착수 전 즉시 측정)');
     });
     return result;
   }
 
-  // Fallback: 선택된 핵심원인 없을 때 — 해결방안/근본원인 기반 일반 항목
-  var sol  = (solution  || '').trim();
-  var root = (rootCause || '').trim();
-  var prob = (problem   || '').trim();
-  var solShort  = sol.length  > 22 ? sol.slice(0, 22)  + '…' : sol  || '해결방안';
-  var rootShort = root.length > 20 ? root.slice(0, 20) + '…' : root || '근본원인';
-  var probShort = prob.length > 20 ? prob.slice(0, 20) + '…' : prob || '문제 상황';
-  var persona = (document.getElementById('s1persona') ? document.getElementById('s1persona').value : '').trim() || '담당 팀장';
+  // Fallback: 핵심원인 없을 때 — 해결방안/근본원인/문제정의 기반 일반 항목
+  var sol      = (solution  || '').trim();
+  var root     = (rootCause || '').trim();
+  var solShort = sol.length  > 22 ? sol.slice(0, 22)  + '…' : sol  || '해결방안';
+  var rootShort= root.length > 20 ? root.slice(0, 20) + '…' : root || '근본원인';
   return [
-    '[성과] "' + probShort + '" 관련 핵심 지표 — 실행 전후 3개월 추이 비교',
-    '[행동] "' + solShort + '" 실행 후 담당자 행동 변화 체크리스트 점검',
-    '[인식] ' + persona + ' 및 현장 담당자 대상 "' + rootShort + '" 변화 체감 인터뷰 (3~5명)',
-    '[구조] 현행 프로세스 실태 점검 — "' + solShort + '" 적용 전 기준선(Baseline) 측정',
-    '[벤치마킹] 동종업계 유사 사례에서 "' + solShort + '"의 성공 조건 및 기대 수치 조사'
+    '[기준선] "' + gShort + '" 현황 수치 측정 — 실행 전 Baseline 기록 (3개월 평균)',
+    '[성과] "' + gShort + '"가 "' + tobeS + '"에 도달했는지 판단할 핵심 지표 — 실행 전후 비교',
+    '[행동] "' + solShort + '" 실행 후 ' + persona + '의 행동 변화 체크리스트 점검',
+    '[인식] ' + persona + ' 대상 "' + rootShort + '" 변화 체감 인터뷰 — "이전과 달라진 점이 있는가?" (Yes/No + 근거)',
+    '[구조] "' + solShort + '" 실행 결과물(문서·기준·시스템)이 실제 운영되고 있는가 — 존재 여부 확인',
+    '[벤치마킹] 동종업계에서 유사 해결방안 실행 시 기대할 수 있는 수치 범위 조사 (비교 기준 확보)'
   ];
 }
 
@@ -2250,6 +2515,51 @@ function generateIdeasFromRootCause(rootCause) {
     { n: '핵심 지표(KPI) 주간 모니터링 + 이상 발생 즉시 보고·개선 루프 구축', e: null, f: null },
     { n: '이해관계자 워크숍 → 공동 원인 진단 + 공감대 형성 → 자발적 참여 유도', e: null, f: null }
   ];
+}
+
+// ── Step 6: 체크된 증거 항목에서 연관 이해관계자 추출 ───────
+function generateStakeholdersFromEvidence(checkedEvid) {
+  var result = [];
+  var sol1 = (document.getElementById('s4sol1') ? document.getElementById('s4sol1').value : '').trim() || '해결방안';
+  var solS = sol1.length > 22 ? sol1.slice(0, 22) + '…' : sol1;
+
+  checkedEvid.forEach(function(ev) {
+    var text = ev.text || '';
+    var dept = null, icon = '📌', concern = '', logic = '';
+
+    // 증거 텍스트 키워드로 이해관계자 역할 유추
+    if (/HR|인사|채용|역량|교육|훈련/.test(text)) {
+      dept = 'HR · 인사팀'; icon = '👥';
+      concern = '역량 개발·교육 계획 수립 시 현업 일정과의 충돌';
+      logic = '교육 전이 검증이 이번 증거 수집 계획에 포함되어 있으므로, HR팀의 실행 협력이 해결방안의 효과 검증에 직결됩니다.';
+    } else if (/재무|예산|비용|투자|ROI/.test(text)) {
+      dept = '재무 · 기획팀'; icon = '💰';
+      concern = '해결방안 실행 예산 승인 기준과 ROI 산정 방식';
+      logic = '"' + solS + '" 실행 전후 비용·성과 데이터를 재무팀이 공동으로 검토해야 검증 기준의 신뢰도가 높아집니다.';
+    } else if (/고객|NPS|만족도|인터뷰|설문/.test(text)) {
+      dept = '고객 대표 · CS팀'; icon = '🙋';
+      concern = '고객 인터뷰·설문 참여율 확보와 응답 편향 관리';
+      logic = '체크된 증거 항목 중 고객 인식 측정이 포함되어 있습니다. CS팀 협력 없이는 실제 고객 접점 데이터를 확보하기 어렵습니다.';
+    } else if (/IT|시스템|데이터|대시보드|자동화/.test(text)) {
+      dept = 'IT · 데이터팀'; icon = '💻';
+      concern = '데이터 추출·시스템 연동 가능 여부와 개발 우선순위 협의';
+      logic = '증거 수집 계획 중 데이터·시스템 기반 항목이 체크되었습니다. IT팀의 기술 지원 없이는 객관적 수치 확보가 불가능합니다.';
+    } else if (/현장|작업자|팀원|담당자/.test(text)) {
+      dept = '현장 실무 담당자'; icon = '⚙️';
+      concern = '증거 수집 과정에서의 추가 업무 부담과 데이터 입력 정확도';
+      logic = '"' + solS + '"의 실제 효과는 현장 데이터로만 확인됩니다. 담당자가 기준선(Baseline) 측정에 협력해야 검증이 가능합니다.';
+    } else if (/경쟁사|벤치마킹|업계/.test(text)) {
+      dept = '전략 · 기획팀'; icon = '🔭';
+      concern = '외부 벤치마킹 정보 수집 범위와 공개 가능 여부';
+      logic = '체크된 벤치마킹 항목을 통해 기대 수치 기준을 확보하려면 전략팀의 외부 리서치 역량이 필요합니다.';
+    }
+
+    if (dept) {
+      result.push({ dept: dept, icon: icon, concern: concern, logic: logic });
+    }
+  });
+
+  return result;
 }
 
 // ── Step 6: 해결방안 기반 이해관계자 설득 논리 생성 ──────────
@@ -2399,66 +2709,87 @@ function generateStakeholdersFromSolution() {
   return [stk1, stk2, stk3, stk4];
 }
 
-// ── Step 7: 프로세스 기반 제약 조건 생성 ─────────────────
+// ── Step 7: 4개 입력 기반 제약 조건 분석 생성 ─────────────
 function generateConstraintsFromProcess() {
-  // 앞 단계에서 수집된 실제 데이터 읽기
+  // 앞 단계 컨텍스트 읽기
   var gap      = (document.getElementById('s1gap')?.value      || stepOutputs[1] || '').trim();
-  var asis     = (document.getElementById('s1asis')?.value     || '').trim();
   var tobe     = (document.getElementById('s1tobe')?.value     || '').trim();
   var persona  = (document.getElementById('s1persona')?.value  || '').trim() || '담당팀장';
   var collab   = (document.getElementById('s1collab')?.value   || '').trim() || '유관 부서';
-  var priority = (document.getElementById('s1priority')?.value || '').trim();
   var impact   = (document.getElementById('s1impact')?.value   || '').trim();
-  var rootCause= stepOutputs[3] || (document.getElementById('s3focus')?.value || '').trim();
-  var solution = stepOutputs[4] || (document.getElementById('s4sol1')?.value  || '').trim();
-  var concern  = (document.getElementById('s7concern')?.value  || '').trim();
+  var rootCause= stepOutputs[3] || '';
+  var solution = stepOutputs[4] || (document.getElementById('s4sol1')?.value || '').trim();
 
-  // 키워드 요약 (너무 길면 축약)
+  // 4개 사용자 입력 읽기
+  var inBudget   = (document.getElementById('s7budget')?.value   || '').trim();
+  var inDeadline = (document.getElementById('s7deadline')?.value || '').trim();
+  var inPeople   = (document.getElementById('s7people')?.value   || '').trim();
+  var inOther    = (document.getElementById('s7other')?.value    || '').trim();
+
+  // 축약
   var solShort  = solution  ? (solution.length  > 25 ? solution.slice(0,25)+'…'  : solution)  : '해결방안';
-  var rootShort = rootCause ? (rootCause.length > 20 ? rootCause.slice(0,20)+'…' : rootCause) : '근본 원인';
-  var gapShort  = gap       ? (gap.length       > 20 ? gap.slice(0,20)+'…'       : gap)       : '현재 문제';
-  var tobeShort = tobe      ? (tobe.length      > 20 ? tobe.slice(0,20)+'…'      : tobe)      : '문제 해결된 모습';
+  var rootShort = rootCause ? (rootCause.length > 22 ? rootCause.slice(0,22)+'…' : rootCause) : '근본 원인';
+  var gapShort  = gap       ? (gap.length       > 22 ? gap.slice(0,22)+'…'       : gap)       : '현재 문제';
+  var tobeShort = tobe      ? (tobe.length      > 22 ? tobe.slice(0,22)+'…'      : tobe)      : '해결된 모습';
 
   var cts = [];
 
-  // ① 예산 — 해결방안·우려사항 반영
+  // ① 예산 (Budget)
   var budgetBody = '';
-  if (concern && /예산|비용|돈|원|만원|억/.test(concern)) {
-    budgetBody = concern + ' 이 조건 하에서 ' + solShort + '을(를) 실행하려면 기존 예산 재배분 또는 단계적 파일럿으로 초기 투자 규모를 최소화하는 전략이 필요합니다.';
+  if (inBudget) {
+    budgetBody = '입력된 예산 제약: "' + inBudget + '"\n\n'
+      + '분석: "' + solShort + '" 실행에 이 예산 조건이 미치는 영향 — '
+      + (impact ? '기대 효과(' + impact + ')를 근거로 경영진 투자 승인 자료를 준비하고, ' : '')
+      + '초기 투자를 최소화하는 소규모 파일럿(MVP) 접근을 우선하세요. '
+      + '예산 초과 리스크 발생 시: ① 기능 범위 축소 ② 단계적 확대 ③ 내부 자원 대체 순으로 우회 전략을 검토합니다.';
   } else {
-    budgetBody = '"' + solShort + '" 실행을 위한 초기 예산 확보가 필요합니다. '
-      + (impact ? '기대 효과(' + impact + ')를 근거로 경영진 설득 자료를 준비하고, ' : '')
-      + '소규모 파일럿 → 효과 검증 → 전사 확대 순서로 투자 리스크를 분산하는 것을 권장합니다.';
+    budgetBody = '"' + solShort + '" 실행을 위한 예산이 확정되지 않은 상태입니다. '
+      + (impact ? '기대 효과(' + impact + ')를 ROI 자료로 준비해 경영진 승인을 요청하고, ' : '')
+      + '파일럿 → 효과 검증 → 전사 확대 순서로 초기 투자 리스크를 분산하는 것을 권장합니다.';
   }
-  cts.push({ icon: '💰', type: '예산', body: budgetBody });
+  cts.push({ icon: '💰', type: '예산 (Budget)', body: budgetBody });
 
-  // ② 기간 — priority 입력값 직접 반영
+  // ② 기한 (Deadline)
   var timeBody = '';
-  if (priority) {
-    timeBody = '우선순위 판단: "' + priority + '" '
-      + '이 일정 안에 "' + tobeShort + '"에 도달하려면, 단기(즉시 착수) → 중기(파일럿 실행) → 장기(전사 확대)로 단계를 나누어 각 마일스톤을 설정해야 합니다.';
+  if (inDeadline) {
+    timeBody = '입력된 기한 제약: "' + inDeadline + '"\n\n'
+      + '분석: "' + gapShort + '" → "' + tobeShort + '" 전환을 이 기한 내에 달성하려면, '
+      + '즉시 착수(2주) → 파일럿 실행(4~6주) → 성과 검증(이후) 순의 마일스톤 설계가 필요합니다. '
+      + '기한을 맞추기 위한 실행 범위 조정이 필요하다면, 효과 높은 것 1~2개에 집중하고 나머지는 다음 단계로 이관하세요.';
   } else {
-    timeBody = '"' + solShort + '" 실행의 기간 제약을 명확히 해야 합니다. '
-      + '"' + gapShort + '" 문제가 지속될수록 손실이 커지므로, 최소한의 단기 액션(2주 이내)을 먼저 착수하는 것이 중요합니다.';
+    timeBody = '"' + solShort + '" 실행 기한이 설정되지 않은 상태입니다. '
+      + '"' + gapShort + '" 문제가 지속될수록 손실이 누적되므로, 2주 이내 착수 기준을 설정하고 '
+      + '단기(Quick Win) → 중기(구조 개선) → 장기(문화 정착) 3단계로 기한을 나누어 관리하세요.';
   }
-  cts.push({ icon: '⏰', type: '기간', body: timeBody });
+  cts.push({ icon: '⏰', type: '기한 (Deadline)', body: timeBody });
 
-  // ③ 규정·승인 — 협업 부서·해결방안 반영
-  var ruleBody = '"' + solShort + '"을(를) 실행하기 위해 '
-    + collab + '의 협조 및 경영진 승인이 필요합니다. '
-    + '관련 내부 규정·결재 라인을 사전에 확인하고, 의사결정권자가 "' + rootShort + '" 문제를 인식하고 있는지 여부를 파악한 후 착수 기준을 정하세요.';
-  cts.push({ icon: '📜', type: '규정·승인', body: ruleBody });
-
-  // ④ 기술·역량 — 근본원인·해결방안 반영
-  var skillBody = '"' + rootShort + '"을(를) 해소하기 위해 "'  + solShort + '"을(를) 실행할 때, '
-    + persona + '과(와) 팀 내 실행 역량이 충분한지 점검이 필요합니다. '
-    + '역량 갭이 확인되면 외부 전문가 활용 또는 내부 교육을 병행하고, 초기에는 가장 역량이 높은 구성원을 파일럿 리더로 배치하는 방식을 권장합니다.';
-  cts.push({ icon: '🔧', type: '기술·역량', body: skillBody });
-
-  // ⑤ 사용자가 우려 입력한 경우 추가 항목
-  if (concern && !/예산|비용|돈|원|만원|억/.test(concern)) {
-    cts.push({ icon: '⚠️', type: '추가 우려 사항', body: '입력하신 우려: "' + concern + '" — 이 제약이 "' + solShort + '" 실행에 미치는 영향 범위를 먼저 파악하고, 우회 전략 또는 대안을 사전에 준비하세요.' });
+  // ③ 사람 (People)
+  var peopleBody = '';
+  if (inPeople) {
+    peopleBody = '입력된 인력 제약: "' + inPeople + '"\n\n'
+      + '분석: ' + persona + '과(와) 팀 내 가용 인력이 제한된 상황에서 "' + solShort + '"을(를) 실행하려면, '
+      + '① 역할 분담표(RACI) 작성 → ② 겸직 가능 업무 우선 배치 → ③ 역량 갭이 있는 경우 외부 전문가 단기 활용 순으로 접근하세요. '
+      + (collab ? collab + '의 협력을 통해 인력 부족을 보완하는 방안도 검토하세요.' : '유관 부서의 지원 가능성을 먼저 파악하세요.');
+  } else {
+    peopleBody = '"' + solShort + '" 실행을 담당할 인력이 명확히 지정되지 않은 상태입니다. '
+      + '실행 전 ① 담당자 지정 ② 역할 범위 합의 ③ 투입 공수 산정을 먼저 진행하고, '
+      + '역량 갭이 확인되면 사전 교육 또는 외부 자원 활용을 검토하세요.';
   }
+  cts.push({ icon: '👥', type: '사람 (People)', body: peopleBody });
+
+  // ④ 기타 (Other)
+  var otherBody = '';
+  if (inOther) {
+    otherBody = '입력된 기타 제약: "' + inOther + '"\n\n'
+      + '분석: 이 제약이 "' + solShort + '" 실행에 미치는 영향 — '
+      + '규정·승인·정책 관련이라면 사전에 의사결정권자에게 "' + rootShort + '" 문제 맥락을 공유하고 착수 기준을 협의하세요. '
+      + '예상치 못한 리스크가 발생할 경우: ① 제약 요인 조기 탐지 ② 대안 준비 ③ 이해관계자 사전 동의 순으로 대응합니다.';
+  } else {
+    otherBody = '"' + solShort + '" 실행 시 발생할 수 있는 규정·정책·조직 관련 제약을 점검하세요. '
+      + collab + '의 협조 및 경영진 승인 필요 여부를 사전에 확인하고, '
+      + '의사결정권자가 "' + rootShort + '" 문제를 인식하고 있는지 여부를 파악한 후 착수 기준을 정하세요.';
+  }
+  cts.push({ icon: '⚠️', type: '기타 제약 (Other)', body: otherBody });
 
   return cts;
 }
@@ -2626,12 +2957,12 @@ function renderAIOutput(step) {
     var frameInputVal = (document.getElementById('s2frameInput') ? document.getElementById('s2frameInput').value : '').trim();
 
     if (selectedMeceFrame) {
-      // 선택된 프레임 사용 (leaves 포함)
-      var newLeaves = {};
-      selectedMeceFrame.cats.forEach(function(c) {
-        newLeaves[c] = (selectedMeceFrame.leaves[c] || []).slice();
-      });
-      meceData = { cats: selectedMeceFrame.cats.slice(), leaves: newLeaves };
+      // 선택된 프레임 + Step1 문제 맥락 기반 원인 생성
+      var gap2 = (document.getElementById('s1gap') ? document.getElementById('s1gap').value : '') ||
+                 (document.getElementById('s1asis') ? document.getElementById('s1asis').value : '') ||
+                 stepOutputs[1] || '';
+      var contextLeaves = generateContextualMeceLeaves(selectedMeceFrame, gap2);
+      meceData = { cats: selectedMeceFrame.cats.slice(), leaves: contextLeaves };
 
     } else if (frameInputVal) {
       // 직접 입력된 카테고리 텍스트 파싱
@@ -2697,6 +3028,16 @@ function renderAIOutput(step) {
 
   else if (step === 6) {
     stakeholders = generateStakeholdersFromSolution();
+    // 체크된 증거 항목에서 연관 이해관계자 추가
+    var checkedEvid = (typeof evidItems !== 'undefined') ? evidItems.filter(function(e){ return e.done; }) : [];
+    if (checkedEvid.length) {
+      var addedStks = generateStakeholdersFromEvidence(checkedEvid);
+      addedStks.forEach(function(stk) {
+        // 중복 방지: 동일 dept가 없을 때만 추가
+        var exists = stakeholders.some(function(s){ return s.dept === stk.dept; });
+        if (!exists) stakeholders.push(stk);
+      });
+    }
     renderStk();
   }
 
@@ -2719,21 +3060,82 @@ function renderAIOutput(step) {
   }
 
   else if (step === 9) {
-    const kws = data?.keywords || ['시스템 혁신','현장 주도','데이터 기반','협업 설계','신뢰 구축','빠른 실행'];
-    const kDiv = document.getElementById('kwTags');
+    // 4개 입력 읽기
+    var s9purpose = (document.getElementById('s9purpose') ? document.getElementById('s9purpose').value : '').trim();
+    var s9scope   = (document.getElementById('s9scope')   ? document.getElementById('s9scope').value   : '').trim();
+    var s9compare = (document.getElementById('s9compare') ? document.getElementById('s9compare').value : '').trim();
+    var s9number  = (document.getElementById('s9number')  ? document.getElementById('s9number').value  : '').trim();
+
+    // 컨텍스트 보완 — 입력 없으면 앞 단계에서 추출
+    var gap9  = (document.getElementById('s1gap')  ? document.getElementById('s1gap').value  : '').trim() || stepOutputs[1] || '';
+    var sol9  = stepOutputs[4] || (document.getElementById('s4sol1') ? document.getElementById('s4sol1').value : '').trim();
+    var root9 = stepOutputs[3] || '';
+
+    var purposeCtx = s9purpose || sol9.slice(0, 20) || '문제 해결';
+    var scopeCtx   = s9scope   || '';
+    var compareCtx = s9compare || '';
+    var numberCtx  = s9number  || '';
+
+    // ── 구조화된 한 줄 컨셉 생성 ──────────────────────────
+    // 패턴: "[범위] [비교대상 기준] [목적]을 위한 [수치] 개선 기획"
+    var conceptParts = [];
+    if (scopeCtx)   conceptParts.push(scopeCtx);
+    if (compareCtx) conceptParts.push(compareCtx + ' 기준');
+    conceptParts.push(purposeCtx + '을(를) 위한 실행 설계');
+    if (numberCtx)  conceptParts.push('— ' + numberCtx + ' 달성');
+
+    var conceptLine = conceptParts.join(' ');
+
+    // 컨셉 블록 표시
+    var cb = document.getElementById('s9conceptBlock');
+    var cl = document.getElementById('s9conceptLine');
+    var cm = document.getElementById('s9conceptMeta');
+    if (cb && cl) {
+      cb.style.display = 'block';
+      cl.textContent = conceptLine;
+    }
+    if (cm) {
+      var metaItems = [];
+      if (s9scope)   metaItems.push({ label:'범위', val: s9scope });
+      if (s9purpose) metaItems.push({ label:'목적', val: s9purpose });
+      if (s9compare) metaItems.push({ label:'비교', val: s9compare });
+      if (s9number)  metaItems.push({ label:'수치', val: s9number });
+      cm.innerHTML = metaItems.map(function(m) {
+        return '<span style="font-size:11px;background:rgba(232,112,58,0.15);color:#c0440a;border-radius:20px;padding:2px 10px;font-weight:600;">' + m.label + ': ' + m.val + '</span>';
+      }).join('');
+    }
+
+    // 키워드 생성 — 입력값·앞 단계 맥락 반영
+    var domainKws = [];
+    var allCtx = (gap9 + ' ' + sol9 + ' ' + root9 + ' ' + purposeCtx).toLowerCase();
+    if (/고객|전환|구매/.test(allCtx))    domainKws.push('고객 전환율 개선', '구매 여정 최적화');
+    if (/역량|교육|성장/.test(allCtx))    domainKws.push('역량 기반 성과', '현장 주도 학습');
+    if (/협업|부서|소통/.test(allCtx))    domainKws.push('협업 구조 설계', '부서 간 연계');
+    if (/데이터|시스템|예측/.test(allCtx)) domainKws.push('데이터 기반 의사결정', '시스템 고도화');
+    if (/프로세스|표준|기준/.test(allCtx)) domainKws.push('프로세스 표준화', '실행 기준 명확화');
+    if (/문화|변화|마인드/.test(allCtx))   domainKws.push('변화 관리', '심리적 안전 조성');
+    // 기본 키워드 보완 (6개 미만 시)
+    var baseKws = ['빠른 실행','신뢰 구축','현장 주도','성과 가시화','전략 정렬','지속 가능한 개선'];
+    var kws = domainKws.concat(baseKws).slice(0, 6);
+
+    var kDiv = document.getElementById('kwTags');
     kDiv.innerHTML = '';
     selKeywords = [];
-    kws.forEach(kw => {
-      const t = document.createElement('div');
+    kws.forEach(function(kw) {
+      var t = document.createElement('div');
       t.className = 'kw-tag';
       t.textContent = kw;
-      t.onclick = () => { t.classList.toggle('picked'); if(t.classList.contains('picked')) selKeywords.push(kw); else selKeywords=selKeywords.filter(k=>k!==kw); };
+      t.onclick = function() {
+        t.classList.toggle('picked');
+        if (t.classList.contains('picked')) selKeywords.push(kw);
+        else selKeywords = selKeywords.filter(function(k){ return k !== kw; });
+      };
       kDiv.appendChild(t);
     });
-    const prob = stepOutputs[1] || '';
-    const sol = stepOutputs[4] || '';
-    document.getElementById('s9slogan').value = sol ? `"${sol}을 통한 ${kws[0]} 실현"` : '';
-    document.getElementById('s9catch').value = kws.slice(0,2).join(' + ');
+
+    // 슬로건·캐치프레이즈 자동 채우기
+    document.getElementById('s9slogan').value = conceptLine;
+    document.getElementById('s9catch').value = kws.slice(0, 2).join(' + ');
   }
 }
 
@@ -3164,12 +3566,26 @@ function generateWhyChainForCause(cause) {
     root = '조직이 이 문제를 반복 가능한 구조 문제로 다루지 않고 개인의 역량·태도 문제로 귀인해온 것이 핵심 원인이다';
   }
 
+  // ── GAP 연결 보강: 문제정의 텍스트를 why3·root에 명시적으로 연결 ──
+  if (gap) {
+    var gCtx    = gap.length > 26 ? gap.slice(0, 26) + '…' : gap;
+    var gCheck  = gCtx.slice(0, 12);
+    // why3: 아직 gap 언급이 없을 경우 문제정의 연결 추가
+    if (why3 && why3.indexOf(gCheck) === -1) {
+      why3 = why3 + ' — 이 구조가 "' + gCtx + '" 문제를 반복시키는 직접 원인이 된다';
+    }
+    // root: 핵심원인이 어떤 문제의 근본인지 명시
+    if (root && root.indexOf(gCheck) === -1) {
+      root = '"' + gCtx + '" 문제의 근본원인 → ' + root;
+    }
+  }
+
   return [cause, why1, why2, why3, root];
 }
 
 
 
-// ── Step 4: 핵심원인별 개선방안 참고 렌더링 ──────────────────────────────────
+// ── Step 4: 핵심원인별 개선방안 참고 렌더링 (근본원인 기반 3개 병렬 카드) ────
 function renderS4SolutionRef() {
   var container = document.getElementById('s4solutionRef');
   if (!container) return;
@@ -3186,52 +3602,69 @@ function renderS4SolutionRef() {
   // 헤더
   var hdr = document.createElement('div');
   hdr.style.cssText = 'font-weight:700;font-size:13px;color:var(--primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;';
-  hdr.innerHTML = '📋 핵심원인별 개선방안 <span style="font-size:11px;font-weight:400;color:var(--muted);">(Step 3 도출 결과 — AI 브레인스토밍 참고용)</span>';
+  hdr.innerHTML = '📋 근본원인별 개선방안 <span style="font-size:11px;font-weight:400;color:var(--muted);">(Step 3 근본원인 기반 — 아이디어 선택 참고용)</span>';
   container.appendChild(hdr);
 
   var itemsWrap = document.createElement('div');
-  itemsWrap.style.cssText = 'display:flex;flex-direction:column;gap:14px;';
+  itemsWrap.style.cssText = 'display:flex;flex-direction:column;gap:16px;';
 
   causes.forEach(function(cause, idx) {
-    var sol = getSolutionsForCause(cause);
-    var causeShort = cause.length > 28 ? cause.slice(0,28)+'…' : cause;
+    // Step 3 why3ChainData에서 해당 원인의 근본원인(index 4) 읽기
+    var rootCause = '';
+    if (why3ChainData && why3ChainData[idx] && why3ChainData[idx][4]) {
+      rootCause = why3ChainData[idx][4];
+    }
+    // 근본원인이 있으면 그것 기준으로, 없으면 cause 자체로 개선방안 생성
+    var targetForSol = rootCause || cause;
+    var sol = getSolutionsForCause(targetForSol);
+
+    var causeShort = cause.length > 30 ? cause.slice(0,30)+'…' : cause;
+    var rootShort  = rootCause.length > 40 ? rootCause.slice(0,40)+'…' : rootCause;
 
     var block = document.createElement('div');
-    block.style.cssText = 'border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--bg2);';
+    block.style.cssText = 'border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg2);';
 
-    // 원인 레이블
+    // 헤더: 핵심원인 + 근본원인
     var causeRow = document.createElement('div');
-    causeRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:10px;';
+    causeRow.style.cssText = 'margin-bottom:12px;';
     var numBadge = document.createElement('span');
-    numBadge.style.cssText = 'font-size:11px;font-weight:700;color:white;background:var(--primary);padding:1px 7px;border-radius:20px;flex-shrink:0;';
+    numBadge.style.cssText = 'font-size:11px;font-weight:700;color:white;background:var(--primary);padding:2px 8px;border-radius:20px;margin-right:8px;';
     numBadge.textContent = '원인 ' + (idx+1);
-    var causeText = document.createElement('span');
-    causeText.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);';
-    causeText.textContent = causeShort;
-    causeRow.appendChild(numBadge); causeRow.appendChild(causeText);
+    var causeLabel = document.createElement('span');
+    causeLabel.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);';
+    causeLabel.textContent = causeShort;
+    causeRow.appendChild(numBadge);
+    causeRow.appendChild(causeLabel);
+
+    if (rootShort) {
+      var rootRow = document.createElement('div');
+      rootRow.style.cssText = 'margin-top:6px;padding:6px 10px;background:rgba(232,112,58,0.08);border-left:3px solid var(--primary);border-radius:0 6px 6px 0;font-size:11px;color:var(--primary);line-height:1.5;';
+      rootRow.innerHTML = '🔑 근본원인: <span style="color:var(--text);font-weight:600;">' + rootShort + '</span>';
+      causeRow.appendChild(rootRow);
+    }
     block.appendChild(causeRow);
 
-    // 3단 개선방안
-    var solRows = [
-      { label:'최종 개선방안', text:sol.primary, bg:'#FFF4EE', bc:'#E8703A' },
-      { label:'추가 개선방안 1', text:sol.add1,    bg:'#EFF6FF', bc:'#2563EB' },
-      { label:'추가 개선방안 2', text:sol.add2,    bg:'#F0FDF4', bc:'#059669' }
+    // 3개 병렬 개선방안 카드
+    var solCards = [
+      { label:'방안 A', text:sol.primary, bg:'#FFF4EE', bc:'#E8703A', tc:'#E8703A' },
+      { label:'방안 B', text:sol.add1,    bg:'#EFF6FF', bc:'#2563EB', tc:'#2563EB' },
+      { label:'방안 C', text:sol.add2,    bg:'#F0FDF4', bc:'#059669', tc:'#059669' }
     ];
-    var solWrap = document.createElement('div');
-    solWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-    solRows.forEach(function(item) {
-      var row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:7px;background:'+item.bg+';';
-      var badge = document.createElement('span');
-      badge.style.cssText = 'font-size:10px;font-weight:700;color:white;background:'+item.bc+';padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px;';
+    var solGrid = document.createElement('div');
+    solGrid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;';
+    solCards.forEach(function(item) {
+      var card = document.createElement('div');
+      card.style.cssText = 'border:1.5px solid '+item.bc+';border-radius:8px;padding:10px;background:'+item.bg+';display:flex;flex-direction:column;gap:6px;';
+      var badge = document.createElement('div');
+      badge.style.cssText = 'font-size:10px;font-weight:700;color:'+item.tc+';border-bottom:1px solid '+item.bc+';padding-bottom:4px;margin-bottom:2px;';
       badge.textContent = item.label;
-      var txt = document.createElement('span');
-      txt.style.cssText = 'font-size:12px;line-height:1.55;color:#222;';
+      var txt = document.createElement('div');
+      txt.style.cssText = 'font-size:11px;line-height:1.55;color:#222;';
       txt.textContent = item.text;
-      row.appendChild(badge); row.appendChild(txt);
-      solWrap.appendChild(row);
+      card.appendChild(badge); card.appendChild(txt);
+      solGrid.appendChild(card);
     });
-    block.appendChild(solWrap);
+    block.appendChild(solGrid);
     itemsWrap.appendChild(block);
   });
 
@@ -4788,7 +5221,6 @@ function initFirebase() {
     }, function(err) {
       setFbStatus(false, err.message || '읽기 권한 없음');
     });
-    // 6초 내 응답 없으면 타임아웃 표시
     setTimeout(function() {
       var txt = document.getElementById('fbStatusTxt');
       if (txt && txt.textContent.indexOf('확인') >= 0) {
