@@ -2421,57 +2421,76 @@ function getEvidenceForCause(cause) {
   return { question: q, items: items };
 }
 
-// ── 증거탐색 생성 — 문제정의·근본원인 기반 구체적 검증기준 ─────────────────
+// ── 증거탐색 생성 — "해결방안을 실행하면 문제가 해결된다" 검증 형식 ──────────
 function generateEvidenceFromSolution(solution, rootCause, problem) {
   var causes  = (typeof selectedKeyCauses !== 'undefined') ? selectedKeyCauses.filter(Boolean) : [];
   var gap     = (document.getElementById('s1gap')     ? document.getElementById('s1gap').value     : '').trim() || problem || '';
   var persona = (document.getElementById('s1persona') ? document.getElementById('s1persona').value : '').trim() || '담당팀';
   var tobe    = (document.getElementById('s1tobe')    ? document.getElementById('s1tobe').value    : '').trim();
-  var gShort  = gap.length  > 22 ? gap.slice(0, 22)  + '…' : gap  || '문제 상황';
-  var tobeS   = tobe.length > 20 ? tobe.slice(0, 20) + '…' : tobe || '목표 상태';
 
-  // 핵심원인이 선택된 경우 — 원인별 + 근본원인 기반 구체적 검증기준 생성
+  // Step 4 해결방안 읽기
+  var sol1 = (document.getElementById('s4sol1') ? document.getElementById('s4sol1').value : '').trim();
+  var sol2 = (document.getElementById('s4sol2') ? document.getElementById('s4sol2').value : '').trim();
+  var sol3 = (document.getElementById('s4sol3') ? document.getElementById('s4sol3').value : '').trim();
+  var primarySol = sol1 || solution || '해결방안';
+
+  var gShort   = gap.length  > 20 ? gap.slice(0, 20)  + '…' : gap  || '문제 상황';
+  var tobeS    = tobe.length > 18 ? tobe.slice(0, 18) + '…' : tobe || '목표 상태';
+  var solS1    = primarySol.length > 20 ? primarySol.slice(0, 20) + '…' : primarySol;
+  var solS2    = sol2.length > 20 ? sol2.slice(0, 20) + '…' : sol2;
+  var solS3    = sol3.length > 20 ? sol3.slice(0, 20) + '…' : sol3;
+
+  // 해결방안이 선택된 경우 — 원인별 검증기준을 "실행 → 해결" 형식으로 생성
   if (causes.length) {
     var result = [];
     causes.forEach(function(cause, cIdx) {
-      // 해당 원인의 근본원인 읽기 (why3ChainData[cIdx][4])
       var rCause = '';
       if (typeof why3ChainData !== 'undefined' && why3ChainData[cIdx] && why3ChainData[cIdx][4]) {
         rCause = why3ChainData[cIdx][4];
       }
       rCause = rCause || rootCause || '';
-      var rShort = rCause.length > 28 ? rCause.slice(0, 28) + '…' : rCause;
-      var causeShort = cause.length > 26 ? cause.slice(0, 26) + '…' : cause;
+      var rShort = rCause.length > 24 ? rCause.slice(0, 24) + '…' : rCause;
       var ev = getEvidenceForCause(cause);
 
-      // 검증질문 헤더 — 문제정의와 근본원인을 명시
-      result.push('🔍 검증 기준: [' + causeShort + '] → "' + gShort + '" 해결 여부 판단 질문: ' + ev.question);
+      // 헤더: 해결방안 실행 → 문제 해결 선언
+      result.push('📋 "' + solS1 + '"을(를) 실행하면 "' + gShort + '"이(가) 해결된다');
+      result.push('   → 이를 확인하는 검증 기준 (' + ev.question + ')');
 
-      // 기존 4개 항목을 근본원인·문제정의 맥락으로 강화
-      var rCtx = rShort ? ' (근본원인: "' + rShort + '" 해소 여부 포함)' : '';
+      // 각 검증 항목: "해결방안 실행 후" 형식
       ev.items.forEach(function(item) {
-        result.push(item + rCtx);
-        rCtx = ''; // 첫 항목에만 근본원인 주석 추가
+        result.push('✅ "' + solS1 + '" 실행 후 → ' + item);
       });
 
-      // 문제정의 직접 연결 기준선 항목 추가
-      result.push('[기준선] "' + gShort + '" → "' + tobeS + '" 전환을 확인할 수 있는 Before 수치·상태 기록 (실행 착수 전 즉시 측정)');
+      // 해결방안 2·3이 있으면 추가 검증 항목 포함
+      if (solS2) {
+        result.push('✅ "' + solS2 + '" 실행 후 → "' + gShort + '" 개선 여부 추가 확인');
+      }
+      if (solS3) {
+        result.push('✅ "' + solS3 + '" 실행 후 → "' + gShort + '" 개선 여부 추가 확인');
+      }
+
+      // 근본원인 해소 여부
+      if (rShort) {
+        result.push('🔑 근본원인 해소 확인: "' + rShort + '"이(가) 더 이상 반복되지 않는가');
+      }
+
+      // 전환 기준선 (Before 수치 기록)
+      result.push('📊 기준선: "' + gShort + '" 현재 수치 → "' + tobeS + '" 목표 수치 (실행 착수 전 측정 필수)');
     });
     return result;
   }
 
-  // Fallback: 핵심원인 없을 때 — 해결방안/근본원인/문제정의 기반 일반 항목
-  var sol      = (solution  || '').trim();
+  // Fallback: 핵심원인 없을 때
   var root     = (rootCause || '').trim();
-  var solShort = sol.length  > 22 ? sol.slice(0, 22)  + '…' : sol  || '해결방안';
-  var rootShort= root.length > 20 ? root.slice(0, 20) + '…' : root || '근본원인';
+  var rootShort= root.length > 18 ? root.slice(0, 18) + '…' : root || '근본원인';
   return [
-    '[기준선] "' + gShort + '" 현황 수치 측정 — 실행 전 Baseline 기록 (3개월 평균)',
-    '[성과] "' + gShort + '"가 "' + tobeS + '"에 도달했는지 판단할 핵심 지표 — 실행 전후 비교',
-    '[행동] "' + solShort + '" 실행 후 ' + persona + '의 행동 변화 체크리스트 점검',
-    '[인식] ' + persona + ' 대상 "' + rootShort + '" 변화 체감 인터뷰 — "이전과 달라진 점이 있는가?" (Yes/No + 근거)',
-    '[구조] "' + solShort + '" 실행 결과물(문서·기준·시스템)이 실제 운영되고 있는가 — 존재 여부 확인',
-    '[벤치마킹] 동종업계에서 유사 해결방안 실행 시 기대할 수 있는 수치 범위 조사 (비교 기준 확보)'
+    '📋 "' + solS1 + '"을(를) 실행하면 "' + gShort + '"이(가) 해결된다',
+    '   → 이를 확인하는 검증 기준:',
+    '✅ "' + solS1 + '" 실행 후 → "' + gShort + '" 현황 수치 기준선 확인 (Before 측정)',
+    '✅ "' + solS1 + '" 실행 후 → "' + gShort + '"가 "' + tobeS + '"에 도달했는지 핵심 지표 비교',
+    '✅ "' + solS1 + '" 실행 후 → ' + persona + '의 행동 변화 체크리스트 (Yes/No 이진 판단)',
+    '🔑 근본원인 해소 확인: "' + rootShort + '"이(가) 더 이상 반복되지 않는가',
+    '📊 기준선: "' + gShort + '" 현재 수치 → "' + tobeS + '" 목표 수치 (실행 착수 전 측정 필수)'
   ];
 }
 
@@ -2737,28 +2756,46 @@ function generateConstraintsFromProcess() {
   // ① 예산 (Budget)
   var budgetBody = '';
   if (inBudget) {
-    budgetBody = '입력된 예산 제약: "' + inBudget + '"\n\n'
-      + '분석: "' + solShort + '" 실행에 이 예산 조건이 미치는 영향 — '
-      + (impact ? '기대 효과(' + impact + ')를 근거로 경영진 투자 승인 자료를 준비하고, ' : '')
-      + '초기 투자를 최소화하는 소규모 파일럿(MVP) 접근을 우선하세요. '
-      + '예산 초과 리스크 발생 시: ① 기능 범위 축소 ② 단계적 확대 ③ 내부 자원 대체 순으로 우회 전략을 검토합니다.';
+    // 입력값에서 금액·제약 유형 감지
+    var bAmount  = (inBudget.match(/[\d,]+\s*만\s*원|[\d,]+\s*억/) || [''])[0];
+    var bTight   = /어려움|없음|불가|제한|부족|초과.{0,3}안됨/.test(inBudget);
+    var bApprove = /승인|결재|허가/.test(inBudget);
+    budgetBody = '▸ 제약: "' + inBudget + '"\n\n'
+      + '▸ 영향 분석: '
+      + (bAmount ? bAmount + ' 한도 내에서 ' : '한정된 예산 내에서 ')
+      + '"' + solShort + '" 실행 시 전체 범위를 한꺼번에 추진하기 어렵습니다. '
+      + (bTight ? '"' + gapShort + '" 해결에 가장 직접적인 효과를 내는 1개 핵심 실행에 집중하고, 추가 예산 없이 내부 자원(인력·기존 도구)으로 커버 가능한 범위를 먼저 확정하세요. ' : '')
+      + (bApprove ? '승인 절차가 필요한 경우, ' + (impact ? '기대 효과(' + impact + ')를 ROI 수치로 환산한 ' : '') + '경영진 보고자료를 선행 작성하세요. ' : '')
+      + '\n▸ 대응 전략: ① 파일럿(소규모 테스트) 착수 → ② 효과 수치 확보 → ③ 추가 예산 확보 순으로 단계적으로 확대';
   } else {
-    budgetBody = '"' + solShort + '" 실행을 위한 예산이 확정되지 않은 상태입니다. '
-      + (impact ? '기대 효과(' + impact + ')를 ROI 자료로 준비해 경영진 승인을 요청하고, ' : '')
-      + '파일럿 → 효과 검증 → 전사 확대 순서로 초기 투자 리스크를 분산하는 것을 권장합니다.';
+    budgetBody = '▸ 제약 미입력: 예산 조건이 확정되지 않은 상태입니다.\n\n'
+      + '▸ 권장 조치: '
+      + (impact ? '기대 효과(' + impact + ')를 ROI 자료로 환산해 경영진 승인을 요청하고, ' : '')
+      + '"' + solShort + '" 실행에 필요한 항목별 예상 비용(인건비·도구·교육비)을 먼저 산정하세요.\n'
+      + '▸ 대응 전략: 파일럿 → 효과 검증 → 전사 확대 순서로 초기 투자 리스크를 분산하세요.';
   }
   cts.push({ icon: '💰', type: '예산 (Budget)', body: budgetBody });
 
   // ② 기한 (Deadline)
   var timeBody = '';
   if (inDeadline) {
-    timeBody = '입력된 기한 제약: "' + inDeadline + '"\n\n'
-      + '분석: "' + gapShort + '" → "' + tobeShort + '" 전환을 이 기한 내에 달성하려면, '
-      + '즉시 착수(2주) → 파일럿 실행(4~6주) → 성과 검증(이후) 순의 마일스톤 설계가 필요합니다. '
-      + '기한을 맞추기 위한 실행 범위 조정이 필요하다면, 효과 높은 것 1~2개에 집중하고 나머지는 다음 단계로 이관하세요.';
+    // 기한 키워드 감지
+    var dUrgent  = /즉시|긴급|당장|이번|이달|다음달/.test(inDeadline);
+    var dMonth   = (inDeadline.match(/(\d+)\s*개?월/) || ['',''])[1];
+    var dFixed   = /결산|분기|연말|연초|출시|런칭/.test(inDeadline);
+    timeBody = '▸ 제약: "' + inDeadline + '"\n\n'
+      + '▸ 영향 분석: '
+      + (dUrgent ? '즉각 착수가 필요한 상황으로, ' : '')
+      + (dMonth  ? dMonth + '개월 이내에 ' : '')
+      + '"' + gapShort + '" → "' + tobeShort + '" 전환을 보여줄 수 있는 가시적 성과가 있어야 합니다. '
+      + (dFixed  ? '"' + inDeadline + '" 시점은 고정 기한이므로 실행 범위를 그에 맞춰 조정해야 합니다. ' : '')
+      + '\n▸ 마일스톤 제안: '
+      + (dMonth && parseInt(dMonth) <= 3
+        ? '① 2주 내 착수·역할 확정 → ② ' + Math.ceil(parseInt(dMonth)*0.5) + '주 파일럿 실행 → ③ ' + dMonth + '개월 내 성과 측정 보고'
+        : '① 2주 내 착수 → ② 4~6주 파일럿 → ③ 성과 검증 후 확대');
   } else {
-    timeBody = '"' + solShort + '" 실행 기한이 설정되지 않은 상태입니다. '
-      + '"' + gapShort + '" 문제가 지속될수록 손실이 누적되므로, 2주 이내 착수 기준을 설정하고 '
+    timeBody = '▸ 제약 미입력: 기한이 설정되지 않은 상태입니다.\n\n'
+      + '▸ 권장 조치: "' + gapShort + '" 문제가 지속될수록 손실이 누적됩니다. 2주 이내 착수 기준을 설정하고 '
       + '단기(Quick Win) → 중기(구조 개선) → 장기(문화 정착) 3단계로 기한을 나누어 관리하세요.';
   }
   cts.push({ icon: '⏰', type: '기한 (Deadline)', body: timeBody });
@@ -2766,13 +2803,23 @@ function generateConstraintsFromProcess() {
   // ③ 사람 (People)
   var peopleBody = '';
   if (inPeople) {
-    peopleBody = '입력된 인력 제약: "' + inPeople + '"\n\n'
-      + '분석: ' + persona + '과(와) 팀 내 가용 인력이 제한된 상황에서 "' + solShort + '"을(를) 실행하려면, '
-      + '① 역할 분담표(RACI) 작성 → ② 겸직 가능 업무 우선 배치 → ③ 역량 갭이 있는 경우 외부 전문가 단기 활용 순으로 접근하세요. '
-      + (collab ? collab + '의 협력을 통해 인력 부족을 보완하는 방안도 검토하세요.' : '유관 부서의 지원 가능성을 먼저 파악하세요.');
+    // 인력 키워드 감지
+    var pNo      = /없음|없다|0명|전담.{0,5}없/.test(inPeople);
+    var pFew     = /(\d+)\s*명/.test(inPeople);
+    var pDouble  = /겸직|겸무|병행|투잡/.test(inPeople);
+    var pCount   = (inPeople.match(/(\d+)\s*명/) || ['',''])[1];
+    peopleBody = '▸ 제약: "' + inPeople + '"\n\n'
+      + '▸ 영향 분석: '
+      + (pNo     ? '전담 인력이 없는 상황에서 ' : '')
+      + (pCount  ? pCount + '명이 ' : '')
+      + (pDouble ? '겸직으로 진행해야 하므로 ' : '')
+      + '"' + solShort + '" 실행의 추진력 확보가 가장 큰 리스크입니다. '
+      + '\n▸ 대응 전략: '
+      + '① 역할 분담표(RACI) 작성 → ② 겸직 가능 업무 우선 배치 → ③ 역량 갭 확인 시 외부 전문가 단기 활용\n'
+      + (collab ? '④ ' + collab + '의 협력으로 인력 부족 보완 가능 여부를 사전에 확인하세요.' : '④ 유관 부서 지원 가능 여부를 착수 전 파악하세요.');
   } else {
-    peopleBody = '"' + solShort + '" 실행을 담당할 인력이 명확히 지정되지 않은 상태입니다. '
-      + '실행 전 ① 담당자 지정 ② 역할 범위 합의 ③ 투입 공수 산정을 먼저 진행하고, '
+    peopleBody = '▸ 제약 미입력: 담당 인력이 명확히 지정되지 않은 상태입니다.\n\n'
+      + '▸ 권장 조치: 실행 전 ① 담당자 지정 ② 역할 범위 합의 ③ 투입 공수(시간) 산정을 먼저 진행하세요. '
       + '역량 갭이 확인되면 사전 교육 또는 외부 자원 활용을 검토하세요.';
   }
   cts.push({ icon: '👥', type: '사람 (People)', body: peopleBody });
@@ -2780,13 +2827,21 @@ function generateConstraintsFromProcess() {
   // ④ 기타 (Other)
   var otherBody = '';
   if (inOther) {
-    otherBody = '입력된 기타 제약: "' + inOther + '"\n\n'
-      + '분석: 이 제약이 "' + solShort + '" 실행에 미치는 영향 — '
-      + '규정·승인·정책 관련이라면 사전에 의사결정권자에게 "' + rootShort + '" 문제 맥락을 공유하고 착수 기준을 협의하세요. '
-      + '예상치 못한 리스크가 발생할 경우: ① 제약 요인 조기 탐지 ② 대안 준비 ③ 이해관계자 사전 동의 순으로 대응합니다.';
+    // 기타 제약 유형 감지
+    var oApprove = /승인|결재|허가|경영진/.test(inOther);
+    var oRule    = /규정|규칙|법|정책|제한/.test(inOther);
+    var oVendor  = /외부|업체|벤더|컨설팅/.test(inOther);
+    otherBody = '▸ 제약: "' + inOther + '"\n\n'
+      + '▸ 영향 분석: '
+      + (oApprove ? '"' + inOther + '" 조건으로 인해 착수 전 의사결정권자 승인이 선행되어야 합니다. "' + rootShort + '" 문제 맥락과 "' + gapShort + '" 현황을 포함한 보고 자료를 먼저 준비하세요. ' : '')
+      + (oRule    ? '규정·정책 제약이 있으므로 실행 계획 수립 전 관련 부서(법무·컴플라이언스)와 사전 협의가 필요합니다. ' : '')
+      + (oVendor  ? '외부 업체 활용에 제한이 있는 경우, 내부 역량 범위 내 실행안으로 조정하거나 예외 승인 절차를 확인하세요. ' : '')
+      + (!oApprove && !oRule && !oVendor ? '"' + inOther + '" 제약이 "' + solShort + '" 실행에 직접적 영향을 미치므로, 제약 요인별 우회 방안을 착수 전에 확정하세요. ' : '')
+      + '\n▸ 대응 전략: ① 제약 요인 조기 탐지 → ② 이해관계자 사전 동의 확보 → ③ 대안 준비 후 착수';
   } else {
-    otherBody = '"' + solShort + '" 실행 시 발생할 수 있는 규정·정책·조직 관련 제약을 점검하세요. '
-      + collab + '의 협조 및 경영진 승인 필요 여부를 사전에 확인하고, '
+    otherBody = '▸ 제약 미입력: 규정·승인·조직 관련 제약이 확인되지 않은 상태입니다.\n\n'
+      + '▸ 권장 조치: "' + solShort + '" 실행 전 ① 내부 규정 검토 ② 경영진 승인 필요 여부 확인 ③ '
+      + collab + ' 협조 가능 여부 파악을 진행하세요. '
       + '의사결정권자가 "' + rootShort + '" 문제를 인식하고 있는지 여부를 파악한 후 착수 기준을 정하세요.';
   }
   cts.push({ icon: '⚠️', type: '기타 제약 (Other)', body: otherBody });
@@ -3567,14 +3622,19 @@ function generateWhyChainForCause(cause) {
   }
 
   // ── GAP 연결 보강: 문제정의 텍스트를 why3·root에 명시적으로 연결 ──
+  // ── GAP 맥락 연결: 체인 전체를 문제정의(gap) 상황과 연결 ──
   if (gap) {
     var gCtx    = gap.length > 26 ? gap.slice(0, 26) + '…' : gap;
     var gCheck  = gCtx.slice(0, 12);
-    // why3: 아직 gap 언급이 없을 경우 문제정의 연결 추가
+    // why1: 첫 번째 현상을 gap 상황과 연결 (체인 시작점 맥락화)
+    if (why1 && why1.indexOf(gCheck) === -1) {
+      why1 = '[현상] "' + gCtx + '" 상황에서 — ' + why1;
+    }
+    // why3: 이 구조가 gap을 반복시키는 직접 원인임을 연결
     if (why3 && why3.indexOf(gCheck) === -1) {
       why3 = why3 + ' — 이 구조가 "' + gCtx + '" 문제를 반복시키는 직접 원인이 된다';
     }
-    // root: 핵심원인이 어떤 문제의 근본인지 명시
+    // root: 어떤 문제의 근본원인인지 명시
     if (root && root.indexOf(gCheck) === -1) {
       root = '"' + gCtx + '" 문제의 근본원인 → ' + root;
     }
