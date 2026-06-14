@@ -2495,18 +2495,26 @@ function generateEvidenceFromSolution(solution, rootCause, problem) {
 }
 
 
-// ── 핵심원인별 개선방안 기반 아이디어 생성 (Step 4 전용) ────────────────────
+// ── 핵심원인별 개선방안 기반 아이디어 생성 (Step 4 전용) ─────────────────────
+// renderS4SolutionRef()의 방안A/B/C와 동일하게 근본원인(why3ChainData[idx][4]) 기반으로 생성
 function generateIdeasFromSolutionRef() {
   var causes = (typeof selectedKeyCauses !== 'undefined') ? selectedKeyCauses.filter(Boolean) : [];
   if (!causes.length) return [];
 
   var ideas = [];
-  causes.forEach(function(cause) {
-    var sol = getSolutionsForCause(cause);
+  causes.forEach(function(cause, idx) {
+    // 근본원인 우선 — renderS4SolutionRef()와 동일한 로직
+    var rootCause = '';
+    if (typeof why3ChainData !== 'undefined' && why3ChainData[idx] && why3ChainData[idx][4]) {
+      rootCause = why3ChainData[idx][4];
+    }
+    var target = rootCause || cause;
+    var sol = getSolutionsForCause(target);
     var causeShort = cause.length > 22 ? cause.slice(0, 22) + '…' : cause;
-    ideas.push({ n: sol.primary, tag: causeShort, e: null, f: null });
-    ideas.push({ n: sol.add1,    tag: causeShort, e: null, f: null });
-    ideas.push({ n: sol.add2,    tag: causeShort, e: null, f: null });
+    // 방안A/B/C 레이블 포함해서 아이디어 카드에 표시
+    ideas.push({ n: sol.primary, tag: causeShort, label: '방안 A', e: null, f: null });
+    ideas.push({ n: sol.add1,    tag: causeShort, label: '방안 B', e: null, f: null });
+    ideas.push({ n: sol.add2,    tag: causeShort, label: '방안 C', e: null, f: null });
   });
   return ideas;
 }
@@ -3132,12 +3140,12 @@ function renderAIOutput(step) {
     var numberCtx  = s9number  || '';
 
     // ── 구조화된 한 줄 컨셉 생성 ──────────────────────────
-    // 패턴: "[범위] [비교대상 기준] [목적]을 위한 [수치] 개선 기획"
+    // 패턴: "(목적)을 위한 (범위) (비교대상)대비 (수치) 향상"
     var conceptParts = [];
+    conceptParts.push(purposeCtx + '을(를) 위한');
     if (scopeCtx)   conceptParts.push(scopeCtx);
-    if (compareCtx) conceptParts.push(compareCtx + ' 기준');
-    conceptParts.push(purposeCtx + '을(를) 위한 실행 설계');
-    if (numberCtx)  conceptParts.push('— ' + numberCtx + ' 달성');
+    if (compareCtx) conceptParts.push(compareCtx + ' 대비');
+    if (numberCtx)  conceptParts.push(numberCtx + ' 향상');
 
     var conceptLine = conceptParts.join(' ');
 
@@ -4136,7 +4144,14 @@ function renderIdeas(ideas) {
 
     var nameDiv = document.createElement('div');
     nameDiv.className = 'idea-card-name';
-    nameDiv.textContent = name;
+    // 방안 A/B/C 레이블이 있으면 앞에 뱃지로 표시
+    if (idea.label) {
+      var lbColors = { '방안 A': '#E8703A', '방안 B': '#2563EB', '방안 C': '#059669' };
+      var lbColor = lbColors[idea.label] || 'var(--primary)';
+      nameDiv.innerHTML = '<span style="font-size:10px;font-weight:800;color:white;background:' + lbColor + ';padding:1px 7px;border-radius:10px;margin-right:6px;vertical-align:middle;">' + idea.label + '</span>' + name;
+    } else {
+      nameDiv.textContent = name;
+    }
     nameCol.appendChild(nameDiv);
 
     var tagText = idea.tag
